@@ -3,7 +3,7 @@ import { AuthContext } from '../context/AuthContext';
 import Layout from '../components/Layout';
 
 const Dashboard = () => {
-  const { user, logout } = useContext(AuthContext);
+  const { user } = useContext(AuthContext);
 
   return (
     <Layout>

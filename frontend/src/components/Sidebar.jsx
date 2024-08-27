@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import '../styles/Sidebar.css';
+import { AuthContext } from '../context/AuthContext';
 
 const Sidebar = () => {
   const location = useLocation(); // Para destacar o item ativo
+  const { logout } = useContext(AuthContext);
 
   return (
     <aside className="sidebar">
@@ -17,8 +19,8 @@ const Sidebar = () => {
           <li className={location.pathname === '/dashboard' ? 'active' : ''}>
             <Link to="/dashboard">Dashboard</Link>
           </li>
-          <li className={location.pathname === '/profile' ? 'active' : ''}>
-            <Link to="/profile">Empresas</Link>
+          <li className={location.pathname === '/formularios' ? 'active' : ''}>
+            <Link to="/formularios">Formularios</Link>
           </li>
         </ul>
         <p className="menu-label">Administração</p>
@@ -30,6 +32,9 @@ const Sidebar = () => {
             <Link to="/settings">Configurações</Link>
           </li>
         </ul>
+        <a className="button is-danger" onClick={logout}>
+              Logout
+            </a>
       </div>
 
 

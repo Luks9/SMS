@@ -67,3 +67,7 @@
 
 
 
+.button.is-danger {
+  margin: 14px;
+  align-self: flex-start; /* Ajuste o botão */
+}

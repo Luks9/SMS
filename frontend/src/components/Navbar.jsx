@@ -8,7 +8,7 @@ import '../styles/Navbar.css';
 
 const Navbar = () => {
   const { theme, toggleTheme } = useTheme();
-  const { user, logout } = useContext(AuthContext);
+  const { logout } = useContext(AuthContext);
 
 
   return (

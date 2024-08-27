@@ -1,8 +1,8 @@
 import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
-import Empresas from './pages/Empresas';
+import Formularios from './pages/Formularios';
 import PrivateRoute from './components/PrivateRoute';
 import { ThemeProvider } from './context/ThemeContext';
 
@@ -20,10 +20,18 @@ const App = () => {
           }
         />
         <Route
-          path="/empresas"
+          path="/Formularios"
           element={
             <PrivateRoute>
-              <Empresas />
+              <Formularios />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          index
+          element={
+            <PrivateRoute>
+              <Navigate to="/dashboard" replace />
             </PrivateRoute>
           }
         />
