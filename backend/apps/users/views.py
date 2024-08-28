@@ -1,37 +1,35 @@
-# apps/accounts/views.py
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
-from django.contrib.auth.models import User
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework import status
-from rest_framework.permissions import AllowAny
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+from .serializers import UserProfileSerializer, CustomLoginSerializer
 
 
 class UserProfileView(APIView):
     permission_classes = [IsAuthenticated]
+    serializer_class = UserProfileSerializer  # Adicione o serializer_class aqui
 
     def get(self, request):
         user = request.user
-        print(user)
         user_data = {
             "id": user.id,
             "username": user.username,
             "email": user.email,
             # Adicione outros campos conforme necessário
         }
-        return Response(user_data, status=status.HTTP_200_OK)
+        serializer = self.serializer_class(user_data)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class CustomLoginView(APIView):
     permission_classes = [AllowAny]  # Permite acesso sem autenticação
-
+    serializer_class = CustomLoginSerializer  # Adicione o serializer_class aqui
 
     def post(self, request):
-        print("entrou")
         username = request.data.get('username')
         password = request.data.get('password')
 
@@ -40,24 +38,24 @@ class CustomLoginView(APIView):
         if user is not None:
             # Gerar o token JWT
             refresh = RefreshToken.for_user(user)
-            response = Response()
-            response.set_cookie(
-                key='refreshToken',
-                value=str(refresh),
-                httponly=True, # Impede o acesso via JavaScript
-                secure=True,  # Apenas em HTTPS
-                samesite='Lax'
-            )
-            response.data = {
+            response_data = {
                 'token': str(refresh.access_token),
                 'user': {
                     'id': user.id,
                     'username': user.username,
                     'email': user.email,
                     'name': f'{user.first_name} {user.last_name}'
-                    # Adicione mais campos do usuário se necessário
                 },
             }
+            serializer = self.serializer_class(response_data)
+            response = Response(serializer.data, status=status.HTTP_200_OK)
+            response.set_cookie(
+                key='refreshToken',
+                value=str(refresh),
+                httponly=True,  # Impede o acesso via JavaScript
+                secure=True,  # Apenas em HTTPS
+                samesite='Lax'
+            )
             return response
         
         else:

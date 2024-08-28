@@ -9,6 +9,10 @@ class Company(models.Model):
     is_active = models.BooleanField(default=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='companies')  # Relacionando Company a User
 
+    class Meta:
+        verbose_name = "Empresa"
+        verbose_name_plural = "Empresas"
+
     def __str__(self):
         return self.name
 
@@ -17,12 +21,29 @@ class CategoryQuestion(models.Model):
     weight = models.FloatField()
     is_active = models.BooleanField(default=True)
 
+    class Meta:
+        verbose_name = "Categoria de Pergunta"
+        verbose_name_plural = "Categorias de Perguntas"
+
     def __str__(self):
         return self.name
+    
+class Subcategory(models.Model):
+    name = models.CharField(max_length=255)
+    category = models.ForeignKey(CategoryQuestion, on_delete=models.CASCADE, related_name='subcategories')
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = "Subcategoria"
+        verbose_name_plural = "Subcategorias"
+
+    def __str__(self):
+        return f"{self.name} ({self.category.name})"
+
 
 class Question(models.Model):
     category = models.ForeignKey(CategoryQuestion, on_delete=models.CASCADE)
-    subcategory =models.CharField(max_length=255, blank=True)
+    subcategory = models.ForeignKey(Subcategory, on_delete=models.CASCADE, blank=True, null=True, related_name='questions')
     question = models.TextField()
     is_active = models.BooleanField(default=True)
 

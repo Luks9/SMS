@@ -3,6 +3,7 @@ import axios from 'axios';
 import Layout from '../components/Layout';
 import { AuthContext } from '../context/AuthContext';
 import Message from '../components/Message';
+import QuestionTable from '../components/tables/QuestionTable';
 
 const Formularios = () => {
   const { getToken } = useContext(AuthContext);
@@ -17,9 +18,52 @@ const Formularios = () => {
   const [formData, setFormData] = useState(initialFormData);
 
   const [categories, setCategories] = useState([]);
+  const [subCategories, setSubCategories] = useState([]);
+  const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState(''); // Estado para a mensagem
   const [messageType, setMessageType] = useState('success');
+
+  // Função para buscar as perguntas
+  const fetchQuestions = async () => {
+    try {
+      const token = getToken();
+      const response = await axios.get('/api/questions/', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      setQuestions(response.data);
+    } catch (error) {
+      console.error('Erro ao buscar perguntas:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (formData.category){
+      fetchSubCategories(formData.category)
+    }
+
+  }, [formData.category]);
+
+  const fetchSubCategories = async (id) => {
+    try {
+      const token = getToken();
+      const response = await axios.get(`/api/subcategories/?category=${id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      console.log(response.data);
+      setSubCategories(response.data);
+      setLoading(false);
+    } catch (error) {
+      console.error('Erro ao buscar categorias:', error);
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     // Função assíncrona para buscar as categorias
@@ -40,6 +84,7 @@ const Formularios = () => {
     };
 
     fetchCategories();
+    fetchQuestions();
   }, [getToken]);
 
   const handleChange = (e) => {
@@ -67,6 +112,7 @@ const Formularios = () => {
       });
 
       setFormData(initialFormData);
+      fetchQuestions();
       setMessage('Pergunta salva com sucesso!');
       setMessageType('success');
     } catch (error) {
@@ -137,15 +183,24 @@ const Formularios = () => {
                   <div className="field">
                     <label className="label">Subcategoria</label>
                     <div className="control">
-                      <input
-                        className="input"
-                        name="subcategory"
-                        type="text"
-                        placeholder="Subcategoria"
-                        value={formData.subcategory}
-                        onChange={handleChange}
-                        required
-                      />
+                    <div className="select">
+                        {loading ? (
+                          <p>Carregando Subcategorias...</p>
+                        ) : (
+                          <select
+                            name="subcategory"
+                            value={formData.subcategory}
+                            onChange={handleChange}
+                          >
+                            <option selected disabled value="">Selecione uma categoria</option>
+                            {subCategories.map((category) => (
+                              <option key={category.id} value={category.id}>
+                                {category.name.length > 35 ? `${category.name.slice(0, 35)}...` : category.name}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <div className="field is-grouped">
@@ -163,7 +218,12 @@ const Formularios = () => {
                 <p className="card-header-title">Perguntas</p>
               </header>
               <div className="card-content">
-                        
+                <QuestionTable 
+                  questions={questions} 
+                  loading={loading} 
+                  refreshQuestions={fetchQuestions}
+                  categories={categories}
+                />
               </div>
             </div>
           </div>
