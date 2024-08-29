@@ -15,19 +15,31 @@ class UserProfileView(APIView):
 
     def get(self, request):
         user = request.user
+        company = user.companies.first()
+        if company:
+            company_data = {
+                "id": company.id,
+                "name": company.name,
+                # Adicione mais atributos da empresa se necessário
+            }
+        else:
+            company_data = None  # Ou um dicionário vazio se preferir {}
+        print(company_data)
         user_data = {
             "id": user.id,
             "username": user.username,
             "email": user.email,
+            "company": company_data,
             # Adicione outros campos conforme necessário
         }
+
         serializer = self.serializer_class(user_data)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class CustomLoginView(APIView):
-    permission_classes = [AllowAny]  # Permite acesso sem autenticação
-    serializer_class = CustomLoginSerializer  # Adicione o serializer_class aqui
+    permission_classes = [AllowAny]
+    serializer_class = CustomLoginSerializer
 
     def post(self, request):
         username = request.data.get('username')
@@ -36,30 +48,36 @@ class CustomLoginView(APIView):
         user = authenticate(request, username=username, password=password)
 
         if user is not None:
-            # Gerar o token JWT
+            is_empresa = user.groups.filter(name='empresa').exists()
+
             refresh = RefreshToken.for_user(user)
+            company = user.companies.first()  # Acessa a primeira empresa associada ao usuário
+
             response_data = {
                 'token': str(refresh.access_token),
                 'user': {
                     'id': user.id,
                     'username': user.username,
                     'email': user.email,
-                    'name': f'{user.first_name} {user.last_name}'
+                    'name': f'{user.first_name} {user.last_name}',
+                    'company': company,  # Passe o objeto company diretamente
                 },
             }
+
             serializer = self.serializer_class(response_data)
             response = Response(serializer.data, status=status.HTTP_200_OK)
             response.set_cookie(
                 key='refreshToken',
                 value=str(refresh),
-                httponly=True,  # Impede o acesso via JavaScript
-                secure=True,  # Apenas em HTTPS
+                httponly=True,
+                secure=True,
                 samesite='Lax'
             )
             return response
-        
-        else:
-            return Response({'detail': 'Credenciais inválidas'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        return Response({'detail': 'Credenciais inválidas'}, status=status.HTTP_401_UNAUTHORIZED)
+
+
 
 
 class CustomTokenRefreshView(TokenRefreshView):

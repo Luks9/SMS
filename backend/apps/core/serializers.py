@@ -28,9 +28,15 @@ class QuestionSerializer(serializers.ModelSerializer):
 
 
 class FormSerializer(serializers.ModelSerializer):
+    category_names = serializers.SerializerMethodField()
+
     class Meta:
         model = Form
-        fields = '__all__'
+        fields = ['id', 'name', 'is_active', 'categories', 'category_names']
+
+    def get_category_names(self, obj):
+        return [category.name for category in obj.categories.all()]
+
 
 class AnswerSerializer(serializers.ModelSerializer):
     class Meta:

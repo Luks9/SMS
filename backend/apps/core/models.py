@@ -1,6 +1,5 @@
 from django.contrib.auth.models import User
 from django.db import models
-from datetime import timedelta
 from django.utils import timezone
 
 class Company(models.Model):
@@ -89,7 +88,8 @@ class Answer(models.Model):
     answer_evaluator = models.CharField(max_length=2, choices=ANSWER_CHOICES, blank=True, null=True)
     attachment_evaluator = models.FileField(upload_to='attachments/evaluator/', blank=True, null=True)
     date_evaluator = models.DateField(null=True, blank=True)
-    
+    note = models.TextField(null=True, blank=True)
+
     question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='answers')
     evaluation = models.ForeignKey(Evaluation, on_delete=models.CASCADE, related_name='answers')
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='answers')

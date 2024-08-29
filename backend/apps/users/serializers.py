@@ -1,12 +1,14 @@
 from rest_framework import serializers
+from apps.core.serializers import CompanySerializer
 
 class UserProfileSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     username = serializers.CharField()
     email = serializers.EmailField()
-    # Adicione outros campos conforme necessário
+    company = CompanySerializer(required=False, allow_null=True)
+    
 
 class CustomLoginSerializer(serializers.Serializer):
     token = serializers.CharField()
     user = UserProfileSerializer()
-    # Adicione outros campos conforme necessário
+    
