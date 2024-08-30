@@ -58,14 +58,21 @@ class Form(models.Model):
         return self.name
     
 class Evaluation(models.Model):
+    STATUS_CHOICES = [
+        ('PENDING', 'Pendente'),
+        ('IN_PROGRESS', 'Em Progresso'),
+        ('COMPLETED', 'Concluída'),
+    ]
+    
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='evaluations')
     evaluator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='evaluations')
     form = models.ForeignKey(Form, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     completed_at = models.DateTimeField(null=True, blank=True)
-    valid_until = models.DateField(default=timezone.now)  # Define uma data padrão como a data atual
+    valid_until = models.DateField()  # Data da validade da para responder avaliação
     score = models.FloatField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
 
     def __str__(self):
         return f"Evaluation {self.id} - {self.company.name}"

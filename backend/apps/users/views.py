@@ -79,7 +79,6 @@ class CustomLoginView(APIView):
 
 
 
-
 class CustomTokenRefreshView(TokenRefreshView):
     def post(self, request, *args, **kwargs):
         # Busque o token de refresh no cookie

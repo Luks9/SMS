@@ -1,0 +1,55 @@
+import React from 'react';
+import useFetchForms from '../hooks/useFetchForms';
+import useFetchCompany from '../hooks/useFetchCompany';
+import useFetchEvaluations from '../hooks/useFetchEvaluations'; // Importando o novo hook
+import Layout from '../components/Layout';
+import SendEvaluationForm from '../components/SendEvaluationForm';
+import EvaluationTable from '../components/tables/EvaluationTable';
+
+const EnvioAvaliacoes = () => {
+  const { forms } = useFetchForms();
+  const { companies } = useFetchCompany();
+  const { evaluations, loading, fetchEvaluations } = useFetchEvaluations(); // Usando o novo hook
+
+  return (
+    <Layout>
+      <h1 className="title">Avaliações</h1>
+
+      <div className="columns">
+        <div className="column">
+          <div className="card">
+            <header className="card-header">
+              <p className="card-header-title">Enviar Avaliação</p>
+            </header>
+            <div className="card-content">
+              <SendEvaluationForm 
+                forms={forms} 
+                companies={companies} 
+                onEvaluationSent={fetchEvaluations} 
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="columns">
+        <div className="column">
+          <div className="card">
+            <header className="card-header">
+              <p className="card-header-title">Gerenciar Avaliação</p>
+            </header>
+            <div className="card-content">
+              <EvaluationTable 
+                evaluations={evaluations} 
+                loading={loading} 
+                refreshEvaluations={fetchEvaluations} 
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </Layout>
+  );
+};
+
+export default EnvioAvaliacoes;

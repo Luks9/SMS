@@ -1,19 +1,28 @@
 from rest_framework import viewsets
+from rest_framework.decorators import action
+from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, OpenApiParameter
-from .models import Company, CategoryQuestion, Question, Form, Answer, Subcategory
+from .models import Company, CategoryQuestion, Question, Form, Answer, Subcategory, Evaluation
 from .serializers import (
     CompanySerializer, 
     CategoryQuestionSerializer, 
     QuestionSerializer, 
     FormSerializer, 
     AnswerSerializer,
-    SubcategorySerializer 
+    SubcategorySerializer,
+    EvaluationSerializer
 )
 
 @extend_schema(tags=['Empresas'])
 class CompanyViewSet(viewsets.ModelViewSet):
     queryset = Company.objects.all()
     serializer_class = CompanySerializer
+
+
+    # @action(detail=False, methods=['get'])
+    # def custom_action_teste(self, request):
+    #     data = {'message': 'Isso é uma ação customizada!'}
+    #     return Response(data)
 
 
 @extend_schema(tags=['Categorias'])
@@ -55,6 +64,12 @@ class QuestionViewSet(viewsets.ModelViewSet):
 class FormViewSet(viewsets.ModelViewSet):
     queryset = Form.objects.all()
     serializer_class = FormSerializer
+
+@extend_schema(tags=['Avaliações'])
+class EvaluationViewSet(viewsets.ModelViewSet):
+    queryset = Evaluation.objects.all()
+    serializer_class = EvaluationSerializer
+
 
 @extend_schema(tags=['Respostas'])
 class AnswerViewSet(viewsets.ModelViewSet):

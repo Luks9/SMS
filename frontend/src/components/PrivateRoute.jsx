@@ -1,23 +1,33 @@
-import React, { useContext, useState, useEffect } from 'react';
+import React, { useContext } from 'react';
 import { Navigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 
-const PrivateRoute = ({ children }) => {
+export const PrivateRoute = ({ children }) => {
   const { user } = useContext(AuthContext);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // Simula o tempo de carregamento para restaurar o usuário
-    if (user !== undefined) {
-      setLoading(false);
-    }
-  }, [user]);
-
-  if (loading) {
-    return <div>Loading...</div>; // Ou um componente de loading
+  if (!user) {
+    return <Navigate to="/login" replace />;
   }
 
-  return user ? children : <Navigate to="/login" />;
+  return children;
 };
 
-export default PrivateRoute;
+export const AdminRoute = ({ children }) => {
+  const { user } = useContext(AuthContext);
+
+  if (!user || localStorage.getItem('userType') !== 'admin') {
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
+};
+
+export const EmpresaRoute = ({ children }) => {
+  const { user } = useContext(AuthContext);
+
+  if (!user || localStorage.getItem('userType') !== 'empresa') {
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
+};

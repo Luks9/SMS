@@ -1,23 +1,22 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTrashCan, faEdit } from '@fortawesome/free-solid-svg-icons';
 import axios from 'axios';
 import EditQuestionModal from '../modals/EditQuestionModal';
 import { AuthContext } from '../../context/AuthContext';
+import Pagination from './Pagination'; // Importando o componente de paginação
 
 const QuestionTable = ({ questions, loading, refreshQuestions, categories }) => {
   const { getToken } = useContext(AuthContext);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedQuestion, setSelectedQuestion] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5; // Defina o número de itens por página
 
-  if (loading) {
-    return <p>Carregando perguntas...</p>;
-  }
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = questions.slice(indexOfFirstItem, indexOfLastItem);
 
-  if (questions.length === 0) {
-    return <p>Nenhuma pergunta encontrada.</p>;
-  }
-  console.log(questions)
   const handleEdit = (question) => {
     setSelectedQuestion(question);
     setIsModalOpen(true);
@@ -40,6 +39,19 @@ const QuestionTable = ({ questions, loading, refreshQuestions, categories }) => 
     }
   };
 
+  useEffect(() => {
+    // Reseta para a primeira página quando as perguntas forem atualizadas
+    setCurrentPage(1);
+  }, [questions]);
+
+  if (loading) {
+    return <p>Carregando perguntas...</p>;
+  }
+
+  if (questions.length === 0) {
+    return <p>Nenhuma pergunta encontrada.</p>;
+  }
+
   return (
     <>
       <table className="table is-fullwidth is-striped">
@@ -53,7 +65,7 @@ const QuestionTable = ({ questions, loading, refreshQuestions, categories }) => 
           </tr>
         </thead>
         <tbody>
-          {questions.map((question) => (
+          {currentItems.map((question) => (
             <tr key={question.id}>
               <td>{question.question}</td>
               <td>{question.category_name}</td>
@@ -79,6 +91,13 @@ const QuestionTable = ({ questions, loading, refreshQuestions, categories }) => 
         </tbody>
       </table>
 
+      <Pagination
+        totalItems={questions.length}
+        itemsPerPage={itemsPerPage}
+        currentPage={currentPage}
+        onPageChange={setCurrentPage}
+      />
+
       {/* Renderizar o modal de edição */}
       {selectedQuestion && (
         <EditQuestionModal
@@ -87,7 +106,6 @@ const QuestionTable = ({ questions, loading, refreshQuestions, categories }) => 
           onClose={() => setIsModalOpen(false)}
           refreshQuestions={refreshQuestions}
           categories={categories}
-        
         />
       )}
     </>

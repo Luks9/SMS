@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Company, CategoryQuestion, Question, Form, Answer, Subcategory
+from .models import Company, CategoryQuestion, Question, Form, Answer, Subcategory, Evaluation
 
 class CompanySerializer(serializers.ModelSerializer):
     class Meta:
@@ -36,6 +36,28 @@ class FormSerializer(serializers.ModelSerializer):
 
     def get_category_names(self, obj):
         return [category.name for category in obj.categories.all()]
+    
+
+class EvaluationSerializer(serializers.ModelSerializer):
+    company_name = serializers.CharField(source="company.name", read_only=True)
+    #evaluator_name = serializers.CharField(source="User.first_name", read_only=True)
+    form_name = serializers.CharField(source="form.name", read_only=True)
+
+    class Meta:
+        model = Evaluation
+        fields = [
+            'id', 
+            'company', 
+            'company_name', 
+            'completed_at', 
+            'created_at', 
+            'evaluator', 
+            'form', 
+            'form_name', 
+            'is_active', 
+            'score', 
+            'status', 
+        ]
 
 
 class AnswerSerializer(serializers.ModelSerializer):

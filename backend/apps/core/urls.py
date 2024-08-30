@@ -6,6 +6,7 @@ from .views import (
     FormViewSet, 
     AnswerViewSet,
     SubCategoryViewSet,
+    EvaluationViewSet
 )
 
 router = DefaultRouter()
@@ -14,6 +15,7 @@ router.register(r'categories', CategoryQuestionViewSet)
 router.register(r'subcategories', SubCategoryViewSet)
 router.register(r'questions', QuestionViewSet)
 router.register(r'forms', FormViewSet)
+router.register(r'evaluation', EvaluationViewSet)
 router.register(r'answers', AnswerViewSet)
 
 urlpatterns = router.urls

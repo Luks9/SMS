@@ -1,9 +1,11 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
+import AdminDashboard from './pages/AdminDashboard';
+import EmpresaDashboard from './pages/EmpresaDashboard';
 import Formularios from './pages/Formularios';
-import PrivateRoute from './components/PrivateRoute';
+import EnvioAvaliacoes from './pages/EnvioAvaliacoes';
+import { AdminRoute, EmpresaRoute, PrivateRoute } from './components/PrivateRoute';
 import { ThemeProvider } from './context/ThemeContext';
 
 const App = () => {
@@ -11,24 +13,48 @@ const App = () => {
     <ThemeProvider>
       <Routes>
         <Route path="/login" element={<Login />} />
+
+        {/* Rotas para administrador */}
         <Route
-          path="/dashboard"
+          path="/admin-dashboard"
           element={
-            <PrivateRoute>
-              <Dashboard />
-            </PrivateRoute>
+            <AdminRoute>
+              <AdminDashboard />
+            </AdminRoute>
           }
         />
+
+        {/* Rotas para empresa */}
         <Route
-          path="/Formularios"
+          path="/empresa-dashboard"
           element={
-            <PrivateRoute>
+            <EmpresaRoute>
+              <EmpresaDashboard />
+            </EmpresaRoute>
+          }
+        />
+
+        <Route
+          path="/enviar-avaliacao"
+          element={
+            <AdminRoute>
+              <EnvioAvaliacoes />
+            </AdminRoute>
+          }
+        />
+       
+        <Route
+          path="/formularios"
+          element={
+            <AdminRoute>
               <Formularios />
-            </PrivateRoute>
+            </AdminRoute>
           }
         />
+
+        {/* Rota de redirecionamento padrão */}
         <Route
-          index
+          path="/"
           element={
             <PrivateRoute>
               <Navigate to="/dashboard" replace />

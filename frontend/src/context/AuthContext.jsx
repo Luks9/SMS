@@ -2,7 +2,6 @@ import React, { createContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
-
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
@@ -46,7 +45,16 @@ export const AuthProvider = ({ children }) => {
       setToken(accessToken);
       localStorage.setItem('user', JSON.stringify(loggedUser));
       localStorage.setItem('token', accessToken);
-      navigate('/dashboard');
+
+      // Verifica o tipo de usuário e salva no localStorage
+      if (loggedUser.company === null) {
+        localStorage.setItem('userType', 'admin');
+        navigate('/admin-dashboard'); // Redireciona para o dashboard do administrador
+      } else {
+        localStorage.setItem('userType', 'empresa');
+        localStorage.setItem('companyId', loggedUser.company.id);
+        navigate('/empresa-dashboard'); // Redireciona para o dashboard da empresa
+      }
     } catch (error) {
       console.error('Login falhou', error);
     }
@@ -57,6 +65,8 @@ export const AuthProvider = ({ children }) => {
     setToken(null);
     localStorage.removeItem('user');
     localStorage.removeItem('token');
+    localStorage.removeItem('userType');
+    localStorage.removeItem('companyId');
     navigate('/login');
   };
 
