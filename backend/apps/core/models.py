@@ -73,6 +73,7 @@ class Evaluation(models.Model):
     score = models.FloatField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
+    period = models.DateField(null=True, blank=True)
 
     def __str__(self):
         return f"Evaluation {self.id} - {self.company.name}"

@@ -59,18 +59,7 @@ const NewForm = ({ categories, fetchForms }) => {
   };
 
   return (
-    <div className="card">
-      <header className="card-header">
-        <p className="card-header-title">Novo Formulário</p>
-      </header>
-      <div className="card-content">
-        {message && (
-          <Message
-            message={message}
-            type={messageType}
-            onClose={() => setMessage('')} // Função para fechar a mensagem
-          />
-        )}
+
         <form onSubmit={handleSubmit}>
           <div className="field">
             <label className="label">Nome do Formulário</label>
@@ -110,8 +99,7 @@ const NewForm = ({ categories, fetchForms }) => {
             </div>
           </div>
         </form>
-      </div>
-    </div>
+
   );
 };
 

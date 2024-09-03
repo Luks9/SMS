@@ -24,7 +24,7 @@ const Sidebar = () => {
         <ul className="menu-list">
           <li className={location.pathname === dashboardLink ? 'active' : ''}>
             <Link to={dashboardLink} aria-current={location.pathname === dashboardLink ? 'page' : undefined}>
-              <FontAwesomeIcon icon={faTachometerAlt} /> Dashboard
+              <FontAwesomeIcon icon={faTachometerAlt} />&nbsp; Dashboard
             </Link>
           </li>
         </ul>
@@ -34,14 +34,14 @@ const Sidebar = () => {
           {userType === 'admin' && (
             <li className={location.pathname === '/enviar-avaliacao' ? 'active' : ''}>
               <Link to="/enviar-avaliacao" aria-current={location.pathname === '/enviar-avaliacao' ? 'page' : undefined}>
-                <FontAwesomeIcon icon={faPaperPlane} /> Enviar Avaliação
+                <FontAwesomeIcon icon={faPaperPlane} /> &nbsp; Enviar Avaliação
               </Link>
             </li>
           )}
           {userType === 'admin' && (
             <li className={location.pathname === '/formularios' ? 'active' : ''}>
               <Link to="/formularios" aria-current={location.pathname === '/formularios' ? 'page' : undefined}>
-                <FontAwesomeIcon icon={faFileAlt} /> Formulários
+                <FontAwesomeIcon icon={faFileAlt} /> &nbsp; Formulários
               </Link>
             </li>
           )}
@@ -52,13 +52,13 @@ const Sidebar = () => {
           </li> */}
           <li className={location.pathname === '/settings' ? 'active' : ''}>
             <Link to="/settings" aria-current={location.pathname === '/settings' ? 'page' : undefined}>
-              <FontAwesomeIcon icon={faCog} /> Configurações
+              <FontAwesomeIcon icon={faCog} /> &nbsp; Configurações
             </Link>
           </li>
         </ul>
 
         <button className="button is-danger" onClick={logout}>
-          <FontAwesomeIcon icon={faSignOutAlt} /> Logout
+          <FontAwesomeIcon icon={faSignOutAlt} /> &nbsp; Logout
         </button>
       </div>
     </aside>

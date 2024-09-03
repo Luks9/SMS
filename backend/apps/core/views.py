@@ -1,4 +1,4 @@
-from rest_framework import viewsets
+from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, OpenApiParameter
@@ -10,7 +10,8 @@ from .serializers import (
     FormSerializer, 
     AnswerSerializer,
     SubcategorySerializer,
-    EvaluationSerializer
+    EvaluationSerializer,
+    EvaluationDetailSerializer
 )
 
 @extend_schema(tags=['Empresas'])
@@ -69,6 +70,13 @@ class FormViewSet(viewsets.ModelViewSet):
 class EvaluationViewSet(viewsets.ModelViewSet):
     queryset = Evaluation.objects.all()
     serializer_class = EvaluationSerializer
+
+    @action(detail=True, methods=['get'], url_path='details')
+    def details(self, request, pk=None):
+        evaluation = self.get_object()
+        serializer = EvaluationDetailSerializer(evaluation)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 
 @extend_schema(tags=['Respostas'])

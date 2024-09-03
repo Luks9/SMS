@@ -5,6 +5,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import EmpresaDashboard from './pages/EmpresaDashboard';
 import Formularios from './pages/Formularios';
 import EnvioAvaliacoes from './pages/EnvioAvaliacoes';
+import EvaluationDetails from './pages/EvaluationDetails';
 import { AdminRoute, EmpresaRoute, PrivateRoute } from './components/PrivateRoute';
 import { ThemeProvider } from './context/ThemeContext';
 
@@ -42,7 +43,15 @@ const App = () => {
             </AdminRoute>
           }
         />
-       
+        <Route 
+          path="/evaluation/:id/details" 
+          element={
+            <AdminRoute>
+              <EvaluationDetails />
+            </AdminRoute>
+          } 
+        />
+
         <Route
           path="/formularios"
           element={

@@ -1,7 +1,7 @@
 import React from 'react';
 import useFetchForms from '../hooks/useFetchForms';
 import useFetchCompany from '../hooks/useFetchCompany';
-import useFetchEvaluations from '../hooks/useFetchEvaluations'; // Importando o novo hook
+import useFetchEvaluations from '../hooks/useFetchEvaluations';
 import Layout from '../components/Layout';
 import SendEvaluationForm from '../components/SendEvaluationForm';
 import EvaluationTable from '../components/tables/EvaluationTable';
@@ -9,8 +9,8 @@ import EvaluationTable from '../components/tables/EvaluationTable';
 const EnvioAvaliacoes = () => {
   const { forms } = useFetchForms();
   const { companies } = useFetchCompany();
-  const { evaluations, loading, fetchEvaluations } = useFetchEvaluations(); // Usando o novo hook
-
+  const { evaluations, loading, fetchEvaluations } = useFetchEvaluations();
+  
   return (
     <Layout>
       <h1 className="title">Avaliações</h1>

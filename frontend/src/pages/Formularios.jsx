@@ -17,11 +17,11 @@ const Formularios = () => {
     <Layout>
       <h1 className="title">Formulários</h1>
       <div className="columns">
-        <div className="column">
+        <div className="column is-two-fifths">
           <div 
             className="card"
             style={{
-              height: '430px', 
+              height: '400px', 
               display: 'flex', 
               flexDirection: 'column'
             }}
@@ -38,7 +38,7 @@ const Formularios = () => {
           <div 
            className="card" 
            style={{
-             height: '430px', 
+             height: '400px', 
              display: 'flex', 
              flexDirection: 'column'
            }}

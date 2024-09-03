@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import axios from 'axios';
 import Select from 'react-select';
 import { AuthContext } from '../context/AuthContext';
@@ -6,6 +6,12 @@ import Message from './Message';
 
 const SendEvaluationForm = ({ forms, companies, onEvaluationSent }) => {
   const { getToken, user } = useContext(AuthContext);
+
+  // Função para obter o mês e ano atual no formato 'YYYY-MM'
+  const getCurrentMonthYear = () => {
+    const now = new Date();
+    return now.toISOString().slice(0, 7);
+  };
 
   const initialFormData = {
     completed_at: new Date().toISOString(), // Data e hora atual
@@ -16,6 +22,7 @@ const SendEvaluationForm = ({ forms, companies, onEvaluationSent }) => {
     company: null, // Selecionado pelo administrador
     evaluator: user.id, // ID do avaliador, geralmente o usuário logado
     form: null, // Selecionado pelo administrador
+    period: getCurrentMonthYear(), // Preenchido com o mês e ano atual
   };
 
   const [formData, setFormData] = useState(initialFormData);
@@ -55,9 +62,15 @@ const SendEvaluationForm = ({ forms, companies, onEvaluationSent }) => {
       return;
     }
 
+    // Converter 'period' para o formato 'YYYY-MM-01'
+    const formattedPeriod = `${formData.period}-01`;
+
     try {
       const token = getToken();
-      await axios.post('/api/evaluation/', formData, {
+      await axios.post('/api/evaluation/', {
+        ...formData,
+        period: formattedPeriod, // Usar a data formatada para o backend
+      }, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -71,7 +84,7 @@ const SendEvaluationForm = ({ forms, companies, onEvaluationSent }) => {
         onEvaluationSent(); // Callback opcional para ações adicionais após o envio
       }
     } catch (error) {
-      setMessage('Erro ao enviar a avaliação. Tente novamente.');
+      setMessage(error.response.data.non_field_errors[0]);
       setMessageType('error');
     }
   };
@@ -85,7 +98,24 @@ const SendEvaluationForm = ({ forms, companies, onEvaluationSent }) => {
           onClose={() => setMessage('')}
         />
       )}
+
       <div className="columns">
+        <div className="column">
+          <div className="field">
+            <label className="label">Período (Mês e Ano)</label>
+            <div className="control">
+              <input
+                className="input"
+                name="period"
+                type="month"
+                value={formData.period}
+                onChange={handleChange}
+                required
+              />
+            </div>
+          </div>
+        </div>
+
         <div className="column">
           <div className="field">
             <label className="label">Empresa</label>

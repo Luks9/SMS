@@ -1,10 +1,15 @@
 import React, { useState, useEffect, useContext } from 'react';
+import { Link } from 'react-router-dom';
 import axios from 'axios';
 import moment from 'moment';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTrashCan, faEdit } from '@fortawesome/free-solid-svg-icons';
 import { AuthContext } from '../../context/AuthContext';
-import Pagination from './Pagination'; // Importando o componente de paginação
+import Pagination from './Pagination'; 
+import 'moment/locale/pt-br';
+
+
+moment.locale('pt-br')
 
 const STATUS_CHOICES = {
     'PENDING': { label: 'Pendente', className: 'is-danger' },
@@ -52,19 +57,20 @@ const EvaluationTable = ({ evaluations, refreshEvaluations }) => {
       <table className="table is-fullwidth is-striped">
         <thead>
           <tr>
-            <th>Data</th>
+            <th>Competencia</th>
             <th>Empresa</th>
             <th>Formulário</th>
             <th>Data Limite</th>
             <th>Status</th>
             <th>Editar</th>
             <th>Excluir</th>
+            <th>Ver Respostas</th> 
           </tr>
         </thead>
         <tbody>
           {currentItems.map((evaluation) => (
             <tr key={evaluation.id}>
-                <td>{moment(evaluation.created_at).format('DD/MM/YYYY')}</td>
+                <td>{moment(evaluation.period).format('MMM/YYYY')}</td>
                 <td>{evaluation.company_name}</td>
                 <td>{evaluation.form_name}</td>
                 <td>{moment(evaluation.valid_until).format('DD/MM/YYYY')}</td>
@@ -88,6 +94,11 @@ const EvaluationTable = ({ evaluations, refreshEvaluations }) => {
                 >
                   <FontAwesomeIcon icon={faTrashCan} size="lg" color="red" />
                 </button>
+              </td>
+              <td>
+                <Link to={`/evaluation/${evaluation.id}/details`} className="button is-info is-light">
+                  Ver Respostas
+                </Link>
               </td>
             </tr>
           ))}
