@@ -36,7 +36,7 @@ const Sidebar = () => {
       to: '/empresa-avaliacao',
       label: 'Avaliações',
       icon: faFileContract,
-      allowed: ['admin', 'empresa'],
+      allowed: ['empresa'],
     },
     {
       to: '/settings',

@@ -1,9 +1,6 @@
 #serializers.py
 
 from rest_framework import serializers
-from django.utils import timezone
-import os
-import uuid
 from .models import Company, CategoryQuestion, Question, Form, Answer, Subcategory, Evaluation
 
 class CompanySerializer(serializers.ModelSerializer):
