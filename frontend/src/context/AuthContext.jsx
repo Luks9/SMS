@@ -7,6 +7,8 @@ const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('token') || null);
+  const [isLoading, setIsLoading] = useState(true); // Adiciona estado de carregamento
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -14,9 +16,12 @@ export const AuthProvider = ({ children }) => {
 
     if (savedUser && token) {
       setUser(savedUser);
-      verifyAndRefreshToken(); // Verifica e renova o token se necessário
+      verifyAndRefreshToken().finally(() => setIsLoading(false)); // Finaliza carregamento após verificação
+    }else{
+      setIsLoading(false); // Finaliza carregamento se não houver usuário ou token
+
     }
-  }, []); // O array vazio garante que o efeito seja executado apenas uma vez
+  }, []); 
 
   const verifyAndRefreshToken = async () => {
     try {
@@ -45,7 +50,7 @@ export const AuthProvider = ({ children }) => {
       setToken(accessToken);
       localStorage.setItem('user', JSON.stringify(loggedUser));
       localStorage.setItem('token', accessToken);
-
+      
       // Verifica o tipo de usuário e salva no localStorage
       if (loggedUser.company === null) {
         localStorage.setItem('userType', 'admin');
@@ -74,7 +79,7 @@ export const AuthProvider = ({ children }) => {
   const getToken = () => token;
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, getToken }}>
+    <AuthContext.Provider value={{ user, login, logout, getToken, isLoading }}>
       {children}
     </AuthContext.Provider>
   );

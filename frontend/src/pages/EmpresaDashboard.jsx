@@ -7,8 +7,7 @@ const Dashboard = () => {
 
   return (
     <Layout>
-      <h1 className="title">Bem-vindo Empresa, {user?.name}</h1>
-      
+      <h1 className="title">Bem-vindo, {user?.company.name}</h1>
     </Layout>
   );
 };

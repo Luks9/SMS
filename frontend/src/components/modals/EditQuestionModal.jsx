@@ -6,12 +6,7 @@ const EditQuestionModal = ({ question, isOpen, onClose, refreshQuestions, catego
   const { getToken } = useContext(AuthContext);
   const [subCategories, setSubCategories] = useState([]);
 
-  const [formData, setFormData] = useState({
-    question: question.question,
-    category: question.category,
-    subcategory: question.subcategory,
-    is_active: question.is_active,
-  });
+  const [formData, setFormData] = useState({});
 
   const fetchSubCategories = async (id) => {
     try {
@@ -34,6 +29,7 @@ const EditQuestionModal = ({ question, isOpen, onClose, refreshQuestions, catego
       category: question.category,
       subcategory: question.subcategory,
       is_active: question.is_active,
+      recommendation: question.recommendation || ''
     });
     fetchSubCategories(question.category);
   }, [question]);
@@ -87,7 +83,21 @@ const EditQuestionModal = ({ question, isOpen, onClose, refreshQuestions, catego
                 />
               </div>
             </div>
-
+            <div className="field">
+            <label className="label">Recomendação</label>
+            <div className="control">
+              <textarea
+                className="textarea"
+                name="recommendation"
+                type="text"
+                placeholder="Recomendação"
+                value={formData.recommendation}
+                onChange={handleChange}
+                rows="2"
+                required
+              />
+            </div>
+          </div>
             <div className="field">
               <label className="label">Categoria</label>
               <div className="control">

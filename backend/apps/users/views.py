@@ -24,11 +24,11 @@ class UserProfileView(APIView):
             }
         else:
             company_data = None  # Ou um dicionário vazio se preferir {}
-        print(company_data)
         user_data = {
             "id": user.id,
             "username": user.username,
             "email": user.email,
+            'name': f'{user.first_name} {user.last_name}',
             "company": company_data,
             # Adicione outros campos conforme necessário
         }

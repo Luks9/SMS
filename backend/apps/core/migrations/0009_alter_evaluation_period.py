@@ -10,7 +10,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddField(
+        migrations.AlterField(
             model_name='evaluation',
             name='period',
             field=models.DateField(blank=True, null=True),

@@ -46,7 +46,7 @@ const EvaluationDetails = () => {
   if (!evaluation) {
     return <Layout><p>Avaliação não encontrada.</p></Layout>;
   }
-  console.log(evaluation)
+  
   return (
     <Layout>
         <h1 className="title">Detalhes da Avaliação</h1>

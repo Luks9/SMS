@@ -5,6 +5,7 @@ class UserProfileSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     username = serializers.CharField()
     email = serializers.EmailField()
+    name = serializers.EmailField()
     company = CompanySerializer(required=False, allow_null=True)
     
 

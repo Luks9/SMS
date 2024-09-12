@@ -1,3 +1,4 @@
+//frontend/src/components/Navbar.jsx
 import React, { useContext } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faSun, faMoon } from '@fortawesome/free-solid-svg-icons';

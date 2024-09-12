@@ -4,7 +4,6 @@ import Sidebar from './Sidebar';
 const Layout = ({ children }) => {
   return (
     <div>
-      {/* <Navbar /> */}
       <div className="columns is-gapless" style={{ marginTop: '20px', marginLeft: '20px', marginRight: '20px' }}>
         {/* Sidebar */}
         <div className="column is-2">

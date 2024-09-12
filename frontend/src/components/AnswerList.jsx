@@ -14,7 +14,7 @@ const AnswerList = ({ questions, fetchEvaluationDetails }) => {
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('success');
   const [activeTab, setActiveTab] = useState('');  // Estado para a tab ativa
-
+   
   // Agrupar perguntas por categoria
   const groupedQuestions = questions.reduce((groups, question) => {
     const categoryName = question.category_name || 'Sem Categoria';
@@ -41,7 +41,7 @@ const AnswerList = ({ questions, fetchEvaluationDetails }) => {
     setNotes(initialNotes);
     setIsEditing(initialIsEditing);
   }, [questions]);
-
+  
   const ANSWER_CHOICES_MAP = {
     'NA': { label: 'Não Aplicável', color: 'is-light' },
     'C': { label: 'Conforme', color: 'is-success' },
@@ -102,6 +102,33 @@ const AnswerList = ({ questions, fetchEvaluationDetails }) => {
     fetchEvaluationDetails();  // Recarrega os dados após salvar
   };
 
+  const handleDownload = async (answerId, fileName) => {
+    try {
+      const token = getToken();
+      const response = await axios.get(`/api/download/attachment_respondent/${answerId}/`, {
+        headers: {
+          Authorization: `Bearer ${token}`,  // Se for necessário adicionar autenticação
+        },
+        responseType: 'blob',  // Importante para garantir que o arquivo seja tratado corretamente
+      });
+
+      // Criar uma URL para o arquivo baixado
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', fileName);  // Nome do arquivo para download
+      document.body.appendChild(link);
+      link.click();
+
+      // Limpar o URL temporário
+      window.URL.revokeObjectURL(url);
+      link.remove();
+    } catch (error) {
+      console.error('Erro ao baixar o arquivo:', error);
+    }
+  };
+
+
   return (
     <div>
       {message && (
@@ -113,7 +140,7 @@ const AnswerList = ({ questions, fetchEvaluationDetails }) => {
       )}
       
       {/* Navegação por Tabs */}
-      <div className="tabs is-boxed">
+      <div className="tabs is-boxed is-centered">
         <ul>
           {Object.keys(groupedQuestions).map(categoryName => (
             <li
@@ -138,20 +165,20 @@ const AnswerList = ({ questions, fetchEvaluationDetails }) => {
                 <div className="columns is-mobile is-vcentered">
                   <div className="column is-half">
                     <h1 className="subtitle is-5">{question.subcategory_name}</h1>
-                    <h2 className="subtitle is-6">{question.question}</h2>
+                    <p><h2 className="subtitle is-6">{question.question}</h2></p>
                     <p><strong>Resposta da empresa: </strong> 
                       <span className={`tag ${ANSWER_CHOICES_MAP[answer.answer_respondent]?.color || 'is-light'}`}>
                         {ANSWER_CHOICES_MAP[answer.answer_respondent]?.label || 'Aguardando resposta'}
                       </span>
                     </p>
                     {answer.attachment_respondent ? (
-                      <p>
-                        <a href={answer.attachment_respondent} target="_blank" rel="noopener noreferrer">
-                          <FontAwesomeIcon icon={faFileDownload} /> Ver Anexo
-                        </a>
-                      </p>
+                    <button
+                        onClick={() => handleDownload(answer.id, answer.attachment_respondent.split('/').pop())}
+                    >
+                        <FontAwesomeIcon icon={faFileDownload} /> Baixar Anexo
+                    </button>
                     ) : (
-                      <p><em>Sem anexo</em></p>
+                    <p><em>Sem anexo</em></p>
                     )}
                     {answer.date_respondent && (
                       <p><em>Respondido em: {moment(answer.date_respondent).format('DD/MM/YYYY')}</em></p>

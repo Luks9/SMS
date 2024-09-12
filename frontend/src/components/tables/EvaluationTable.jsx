@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useContext } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import moment from 'moment';
@@ -8,13 +8,12 @@ import { AuthContext } from '../../context/AuthContext';
 import Pagination from './Pagination'; 
 import 'moment/locale/pt-br';
 
-
-moment.locale('pt-br')
+moment.locale('pt-br');
 
 const STATUS_CHOICES = {
-    'PENDING': { label: 'Pendente', className: 'is-danger' },
-    'IN_PROGRESS': { label: 'Em Progresso', className: 'is-warning' },
-    'COMPLETED': { label: 'Concluída', className: 'is-success' },
+  'PENDING': { label: 'Pendente', className: 'is-danger' },
+  'IN_PROGRESS': { label: 'Em Progresso', className: 'is-warning' },
+  'COMPLETED': { label: 'Concluída', className: 'is-success' },
 };
 
 const EvaluationTable = ({ evaluations, refreshEvaluations }) => {
@@ -27,8 +26,7 @@ const EvaluationTable = ({ evaluations, refreshEvaluations }) => {
   const currentItems = evaluations.slice(indexOfFirstItem, indexOfLastItem);
 
   const handleEdit = (evaluation) => {
-    // Lógica para editar a avaliação (redirecionar para uma página de edição, abrir um modal, etc.)
-
+    // Função de edição
   };
 
   const handleDelete = async (id) => {
@@ -36,7 +34,8 @@ const EvaluationTable = ({ evaluations, refreshEvaluations }) => {
     if (confirmed) {
       try {
         const token = getToken();
-        await axios.delete(`/api/evaluation/${id}/`, {
+        const is_active = { 'is_active': false };
+        await axios.patch(`/api/evaluation/${id}/`, is_active, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -46,6 +45,20 @@ const EvaluationTable = ({ evaluations, refreshEvaluations }) => {
         console.error('Erro ao excluir a avaliação:', error);
       }
     }
+  };
+
+  // Função para calcular o progresso da avaliação em percentual
+  const calculateProgressPercentage = (evaluation) => {
+    if (evaluation.total_questions === 0) return 0;
+    return Math.round((evaluation.answered_questions / evaluation.total_questions) * 100);
+  };
+
+  // Função para determinar a classe da cor da barra de progresso
+  const getProgressBarColor = (percentage) => {
+    if (percentage <= 25) return 'is-danger';    
+    if (percentage <= 50) return 'is-warning';   
+    if (percentage <= 75) return 'is-info';      
+    return 'is-success';                        
   };
 
   if (evaluations.length === 0) {
@@ -62,46 +75,61 @@ const EvaluationTable = ({ evaluations, refreshEvaluations }) => {
             <th>Formulário</th>
             <th>Data Limite</th>
             <th>Status</th>
+            <th>Progresso</th> {/* Nova coluna para o progresso */}
             <th>Editar</th>
             <th>Excluir</th>
             <th>Ver Respostas</th> 
           </tr>
         </thead>
         <tbody>
-          {currentItems.map((evaluation) => (
-            <tr key={evaluation.id}>
+          {currentItems.map((evaluation) => {
+            const progressPercentage = calculateProgressPercentage(evaluation);
+            const progressBarColor = getProgressBarColor(progressPercentage);
+
+            return (
+              <tr key={evaluation.id}>
                 <td>{moment(evaluation.period).format('MMM/YYYY')}</td>
                 <td>{evaluation.company_name}</td>
                 <td>{evaluation.form_name}</td>
                 <td>{moment(evaluation.valid_until).format('DD/MM/YYYY')}</td>
                 <td>
-                    <span className={`tag ${STATUS_CHOICES[evaluation.status]?.className}`}>
-                        {STATUS_CHOICES[evaluation.status]?.label || evaluation.status}
-                    </span>
+                  <span className={`tag ${STATUS_CHOICES[evaluation.status]?.className}`}>
+                    {STATUS_CHOICES[evaluation.status]?.label || evaluation.status}
+                  </span>
                 </td>
-              <td>
-                <button
-                  className="button is-light"
-                  onClick={() => handleEdit(evaluation)}
-                >
-                  <FontAwesomeIcon icon={faEdit} size="lg" />
-                </button>
-              </td>
-              <td>
-                <button
-                  className="button is-light"
-                  onClick={() => handleDelete(evaluation.id)}
-                >
-                  <FontAwesomeIcon icon={faTrashCan} size="lg" color="red" />
-                </button>
-              </td>
-              <td>
-                <Link to={`/evaluation/${evaluation.id}/details`} className="button is-info is-light">
-                  Ver Respostas
-                </Link>
-              </td>
-            </tr>
-          ))}
+                <td>
+                  <progress
+                    className={`progress ${progressBarColor}`} // Cor dinâmica
+                    value={progressPercentage}
+                    max="100"
+                  >
+                    {progressPercentage}%
+                  </progress>
+                </td>
+                <td>
+                  <button
+                    className="button is-light"
+                    onClick={() => handleEdit(evaluation.id)}
+                  >
+                    <FontAwesomeIcon icon={faEdit} size="lg" />
+                  </button>
+                </td>
+                <td>
+                  <button
+                    className="button is-light"
+                    onClick={() => handleDelete(evaluation.id)}
+                  >
+                    <FontAwesomeIcon icon={faTrashCan} size="lg" color="red" />
+                  </button>
+                </td>
+                <td>
+                  <Link to={`/evaluation/${evaluation.id}/details`} className="button is-info is-light">
+                    Respostas
+                  </Link>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
 

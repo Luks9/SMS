@@ -1,5 +1,6 @@
 import React, { useState, useContext } from 'react';
 import {AuthContext}  from '../context/AuthContext';
+import '../styles/Login.css';
 
 const Login = () => {
   const [username, setUsername] = useState('');
@@ -11,18 +12,17 @@ const Login = () => {
     login(username, password);
   };
 
-
   return (
-    <div className="container">
-      <div className="columns is-centered">
-        <div className="column is-4">
+    <div className="login-container">
+      <div className="login-columns">
+        <div className="login-column">
           <form onSubmit={handleSubmit} className="box">
-            <h1 className="title has-text-centered">SMS</h1>
-            <div className="field">
-              <label className="label">Username</label>
+            <h1 className="login-title">SMS</h1>
+            <div className="login-field">
+              <label className="login-label">Username</label>
               <div className="control">
                 <input
-                  className="input"
+                  className="login-input"
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
@@ -30,11 +30,11 @@ const Login = () => {
                 />
               </div>
             </div>
-            <div className="field">
-              <label className="label">Password</label>
+            <div className="login-field">
+              <label className="login-label">Password</label>
               <div className="control">
                 <input
-                  className="input"
+                  className="login-input"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -42,9 +42,9 @@ const Login = () => {
                 />
               </div>
             </div>
-            <div className="field">
+            <div className="login-field">
               <div className="control">
-                <button type="submit" className="button is-success is-fullwidth">Login</button>
+                <button type="submit" className="login-button">Login</button>
               </div>
             </div>
           </form>

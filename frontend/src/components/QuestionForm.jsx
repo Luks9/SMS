@@ -1,7 +1,7 @@
 // src/components/QuestionForm.js
 import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
-import Message from './Message';  // Certifique-se de que o caminho para o componente Message está correto
+import Message from './Message';
 import { AuthContext } from '../context/AuthContext';
 
 const QuestionForm = ({ categories, fetchQuestions }) => {
@@ -9,6 +9,7 @@ const QuestionForm = ({ categories, fetchQuestions }) => {
 
   const initialFormData = {
     question: '',
+    recommendation: '',
     category: '',
     subcategory: '',
     is_active: true, // Sempre true, não precisa ser alterado
@@ -106,7 +107,21 @@ const QuestionForm = ({ categories, fetchQuestions }) => {
               />
             </div>
           </div>
-
+          <div className="field">
+            <label className="label">Recomendação</label>
+            <div className="control">
+              <textarea
+                className="textarea"
+                name="recommendation"
+                type="text"
+                placeholder="Recomendação"
+                value={formData.recommendation}
+                onChange={handleChange}
+                rows="2"
+                required
+              />
+            </div>
+          </div>
           <div className="field">
             <label className="label">Categoria</label>
             <div className="control">

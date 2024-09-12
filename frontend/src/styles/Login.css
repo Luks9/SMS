@@ -1,0 +1,87 @@
+/* Estilos específicos para a tela de login */
+.login-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background: linear-gradient(160deg, #1A0572 70%, #D4FC00 30%); /* Mais azul, menos verde */
+    font-family: 'Arial', sans-serif;
+  }
+  
+  .login-columns {
+    display: flex;
+    align-items: center;
+  }
+  
+  .login-column {
+    max-width: 400px;
+    width: 100%;
+    background-color: rgba(242, 242, 242, 0.95); /* Fundo do formulário neutro */
+    border-radius: 10px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    padding: 40px;
+    animation: loginFadeIn 1.2s ease-in-out;
+  }
+  
+  /* Animação suave de fade-in */
+  @keyframes loginFadeIn {
+    0% {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  /* Títulos e texto */
+  .login-title {
+    font-size: 2rem;
+    color: #1A0572; /* Azul escuro no título */
+    margin-bottom: 20px;
+    text-align: center;
+  }
+  
+  /* Input e botões */
+  .login-input {
+    font-size: 1rem;
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #1A0572; /* Borda azul escuro */
+    width: 100%;
+    transition: border-color 0.3s ease;
+  }
+  
+  .login-input:focus {
+    border-color: #D4FC00; /* Foco verde */
+    box-shadow: 0 0 8px rgba(212, 252, 0, 0.3);
+  }
+  
+  .login-button {
+    background-color: #1A0572; /* Azul escuro no botão */
+    color: white;
+    font-size: 1rem;
+    padding: 10px;
+    border-radius: 5px;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    width: 100%;
+  }
+  
+  .login-button:hover {
+    background-color: #D4FC00; /* Hover verde */
+    color: #1A0572; /* Texto azul escuro no hover */
+  }
+  
+  .login-label {
+    font-size: 1rem;
+    margin-bottom: 5px;
+    color: #1A0572; /* Azul escuro nas labels */
+  }
+  
+  .login-field {
+    margin-bottom: 20px;
+  }
+  

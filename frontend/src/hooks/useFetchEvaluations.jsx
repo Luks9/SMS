@@ -12,12 +12,11 @@ const useFetchEvaluations = () => {
   const fetchEvaluations = async () => {
     try {
       const token = getToken();
-      const response = await axios.get('/api/evaluation/', {
+      const response = await axios.get('/api/evaluation/?is_active=true', {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
-      console.log(response)
       setEvaluations(response.data);
     } catch (error) {
       console.error('Erro ao buscar avaliações:', error);
