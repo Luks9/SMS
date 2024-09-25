@@ -105,7 +105,7 @@ class Answer(models.Model):
 
     answer_respondent = models.CharField(max_length=2, choices=ANSWER_CHOICES)
     attachment_respondent = models.FileField(upload_to=rename_attachment_respondent, blank=True, null=True)
-    date_respondent = models.DateField(auto_now_add=True)
+    date_respondent = models.DateField(blank=True, null=True)
     
     answer_evaluator = models.CharField(max_length=2, choices=ANSWER_CHOICES, blank=True, null=True)
     attachment_evaluator = models.FileField(upload_to=rename_attachment_evaluator, blank=True, null=True)

@@ -126,6 +126,39 @@ class EvaluationViewSet(viewsets.ModelViewSet):
     
 
 
+    @action(detail=True, methods=['get'], url_path='questions-with-answers')
+    def questions_with_answers(self, request, pk=None):
+        """
+        Retorna todas as perguntas e respostas de uma avaliação específica, 
+        desde que o usuário seja admin ou esteja associado à empresa correta.
+        """
+        evaluation = self.get_object()
+        user = request.user
+
+        # Verificar se o usuário é admin (superuser)
+        if user.is_superuser:
+            return self._get_evaluation_details(evaluation)
+
+        # Verificar se o usuário pertence ao grupo "empresa" e está associado à empresa correta
+        if user.groups.filter(name='empresa').exists() and hasattr(user, 'companies'):
+            company = user.companies.first()  # Pega a primeira empresa associada ao usuário
+            if evaluation.company == company:
+                return self._get_evaluation_details(evaluation)
+
+        # Se não for admin e não estiver associado à empresa correta, retorna erro de permissão
+        return Response(
+            {"detail": "Você não tem permissão para acessar esta avaliação."},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    def _get_evaluation_details(self, evaluation):
+        """
+        Função auxiliar para serializar e retornar os detalhes da avaliação
+        """
+        serializer = EvaluationDetailSerializer(evaluation)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
 @extend_schema(tags=['Respostas'])
 class AnswerViewSet(viewsets.ModelViewSet):
     queryset = Answer.objects.all()

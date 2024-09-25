@@ -74,7 +74,7 @@ const EvaluationCards = ({ evaluations }) => {
                     </span>
                   </button>
                   <Link 
-                    to={`/evaluation/${evaluation.id}/respostas`}
+                    to={`/evaluation/${evaluation.id}/answer`}
                     className="card-footer-item"
                   >
                     Respostas

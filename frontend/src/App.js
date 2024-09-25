@@ -6,7 +6,8 @@ import EmpresaDashboard from './pages/EmpresaDashboard';
 import Formularios from './pages/Formularios';
 import EnvioAvaliacoes from './pages/EnvioAvaliacoes';
 import EvaluationDetails from './pages/EvaluationDetails';
-import EvaluationCompany from './pages/EvaluationCompany'
+import EvaluationCompany from './pages/EvaluationCompany';
+import CompanyAnswer from './components/CompanyAnswer';
 import { AdminRoute, EmpresaRoute, PrivateRoute } from './components/PrivateRoute';
 import { ThemeProvider } from './context/ThemeContext';
 
@@ -58,6 +59,15 @@ const App = () => {
             <AdminRoute>
               <EvaluationDetails />
             </AdminRoute>
+          } 
+        />
+
+        <Route 
+          path="/evaluation/:id/answer" 
+          element={
+            <EmpresaRoute>
+              <CompanyAnswer />
+            </EmpresaRoute>
           } 
         />
 
