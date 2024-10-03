@@ -6,6 +6,7 @@ import { AuthContext } from '../context/AuthContext';
 const useFetchCompanyQuestions = (id) => {
   const { getToken } = useContext(AuthContext);
   const [questions, setQuestions] = useState([]);
+  const [valid_until, SetValidUntil] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -19,6 +20,7 @@ const useFetchCompanyQuestions = (id) => {
         },
       });
       setQuestions(response.data.questions);
+      SetValidUntil(response.data.valid_until);
     } catch (err) {
       console.error('Erro ao carregar as perguntas:', err);
       setError('Erro ao carregar perguntas da avaliação.');
@@ -34,7 +36,7 @@ const useFetchCompanyQuestions = (id) => {
     }
   }, [id]);
 
-  return { questions, loading, error, fetchQuestions };
+  return { questions, loading, error, valid_until, fetchQuestions };
 };
 
 export default useFetchCompanyQuestions;

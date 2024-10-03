@@ -71,6 +71,49 @@ class EvaluationViewSet(viewsets.ModelViewSet):
     serializer_class = EvaluationSerializer
 
 
+    @action(detail=True, methods=['get'], url_path='calculate-score')
+    def calculate_score(self, request, pk=None):
+        """
+        Calcula a pontuação da avaliação com base nas respostas e no peso das categorias.
+        """
+        evaluation = self.get_object()
+
+        # Pegamos todas as respostas associadas a essa avaliação
+        answers = evaluation.answers.all()
+
+        total_score = 0  # Pontuação acumulada
+        total_weight = 0  # Soma dos pesos das categorias
+
+        for answer in answers:
+            category_weight = answer.question.category.weight  # Peso da categoria da pergunta
+
+            # Apenas incrementamos o peso total para perguntas que não sejam "NA"
+            total_weight += category_weight
+
+            # Verifica se a resposta é "Certo" ou "Errado"
+            if answer.answer_respondent in ['C', 'NA']:
+                # Se a resposta for considerada "Certo", somamos o peso da categoria à pontuação
+                total_score += category_weight
+
+        # Verifica se o total_weight é maior que zero para evitar divisão por zero
+        if total_weight > 0:
+            # Calcula a porcentagem da pontuação final
+            final_score = (total_score / total_weight) * 100
+        else:
+            final_score = 0  # Caso não haja respostas válidas
+
+        evaluation.score = final_score
+        evaluation.save()
+        
+        # Retorna a pontuação calculada
+        return Response({
+            'evaluation_id': evaluation.id,
+            'total_score': final_score,
+            'total_weight': total_weight,
+            'message': 'Score atualizado com sucesso.'
+        }, status=status.HTTP_200_OK)
+    
+
     def get_queryset(self):
         """
         Sobrescreve o método get_queryset para filtrar as avaliações com base no parâmetro is_active.

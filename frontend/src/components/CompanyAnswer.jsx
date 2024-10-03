@@ -12,7 +12,7 @@ import useFetchCompanyQuestions from '../hooks/useFetchCompanyQuestions';  // Im
 
 const CompanyAnswer = () => {
   const { id } = useParams();  // Pega o ID da avaliação da URL
-  const { questions, loading, error, fetchQuestions } = useFetchCompanyQuestions(id); // Usa o hook para buscar perguntas
+  const { questions, loading, error, valid_until, fetchQuestions } = useFetchCompanyQuestions(id); // Usa o hook para buscar perguntas
   const { getToken } = useContext(AuthContext);  // Pega o token de autenticação do contexto
   const [selectedAnswers, setSelectedAnswers] = useState({});  // Armazena as respostas da empresa
   const [selectedFiles, setSelectedFiles] = useState({});  // Armazena os arquivos anexados
@@ -43,9 +43,10 @@ const CompanyAnswer = () => {
   useEffect(() => {
     if (!loading && !error && Object.keys(groupedQuestions).length > 0 && activeTab === '') {
       setActiveTab(Object.keys(groupedQuestions)[0]);
-      console.log(questions)
+
     }
   }, [loading, error, groupedQuestions, activeTab]);
+
 
   // Função para lidar com a mudança na resposta selecionada
   const handleSelectChange = (questionId, newValue) => {
@@ -67,94 +68,70 @@ const CompanyAnswer = () => {
     });
   };
 
-  // Função para enviar resposta individual
-  const handleSave = async (questionId, answerId) => {
+  const handleSubmit = async (questionId, answerId = null) => {
     try {
       const token = getToken();
       const formData = new FormData();
+  
       const selectedAnswer = selectedAnswers[questionId];
       const selectedFile = selectedFiles[questionId];
-
+      const company = localStorage.getItem('companyId');
+  
       // Adiciona a resposta selecionada e a data
-      formData.append('answer_respondent', selectedAnswer);
+      formData.append('answer_respondent', selectedAnswer || '');
       formData.append('date_respondent', moment().format('YYYY-MM-DD'));
-
-      // Se houver um arquivo anexado, adiciona ao FormData
+  
+      // Adiciona o anexo se houver
       if (selectedFile) {
         formData.append('attachment_respondent', selectedFile);
       }
-
-      // Envia a resposta individualmente
-      await axios.patch(`/api/answers/${answerId}/`, formData, {
+  
+      // Se estivermos criando, precisamos adicionar esses campos
+      if (!answerId) {
+        formData.append('question', questionId);
+        formData.append('evaluation', id); // 'id' obtido de useParams
+        formData.append('company', company);
+      }
+  
+      // Determina o método de envio: POST (criação) ou PATCH (edição)
+      const url = answerId
+        ? `/api/answers/${answerId}/` // URL para editar resposta existente
+        : '/api/answers/';           // URL para criar nova resposta
+  
+      const method = answerId ? 'patch' : 'post';
+  
+      // Envia a requisição POST ou PATCH com os dados
+      await axios({
+        method: method,
+        url: url,
+        data: formData,
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data',
         },
       });
-      
-      fetchQuestions();
-      setMessage('Resposta enviada com sucesso!');
+  
+      setMessage(answerId ? 'Resposta atualizada com sucesso!' : 'Resposta criada com sucesso!');
       setMessageType('success');
-      toggleEdit(questionId);  // Fecha o modo de edição após salvar
+  
+      // Atualiza as perguntas para refletir a nova ou atualizada resposta
+      fetchQuestions();
+  
+      // Limpa os campos de resposta e arquivo
+      setSelectedAnswers((prev) => ({ ...prev, [questionId]: '' }));
+      setSelectedFiles((prev) => ({ ...prev, [questionId]: null }));
+      setFileNames((prev) => ({ ...prev, [questionId]: '' }));
+  
+      // Fecha o modo de edição após salvar ou criar
+      toggleEdit(questionId);
+  
     } catch (error) {
-      console.error('Erro ao enviar a resposta:', error);
-      setMessage('Erro ao enviar a resposta. Por favor, tente novamente.');
+      console.error('Erro ao salvar a resposta:', error);
+      setMessage('Erro ao salvar a resposta. Por favor, tente novamente.');
       setMessageType('danger');
     }
   };
-
-
-  // Dentro do componente CompanyAnswer
-
-const handleCreate = async (questionId) => {
-  try {
-    const token = getToken();
-    const formData = new FormData();
-
-    const selectedAnswer = selectedAnswers[questionId];
-    const selectedFile = selectedFiles[questionId];
-
-    const company = localStorage.getItem('companyId');
-
-    // Adiciona a resposta selecionada e a data
-    formData.append('answer_respondent', selectedAnswer || '');
-    formData.append('date_respondent', moment().format('YYYY-MM-DD'));
-
-    // Adiciona o anexo se houver
-    if (selectedFile) {
-      formData.append('attachment_respondent', selectedFile);
-    }
-
-    // Campos obrigatórios que você mencionou
-    formData.append('question', questionId);
-    formData.append('evaluation', id); // 'id' obtido de useParams
-    formData.append('company', company); // Substitua 0 pelo ID da empresa real
-
-    // Envia a requisição POST para criar uma nova resposta
-    const response = await axios.post('/api/answers/', formData, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-
-    setMessage('Resposta criada com sucesso!');
-    setMessageType('success');
-
-    // Opcional: Atualize as perguntas para refletir a nova resposta
-    fetchQuestions();
-
-    // Opcional: Limpe os campos de resposta e arquivo
-    setSelectedAnswers((prev) => ({ ...prev, [questionId]: '' }));
-    setSelectedFiles((prev) => ({ ...prev, [questionId]: null }));
-    setFileNames((prev) => ({ ...prev, [questionId]: '' }));
-    toggleEdit(questionId); // Fecha o modo de edição após criar
-  } catch (error) {
-    console.error('Erro ao criar a resposta:', error);
-    setMessage('Erro ao criar a resposta. Por favor, tente novamente.');
-    setMessageType('danger');
-  }
-};
+  
 
 
   // Função para download de arquivo
@@ -230,8 +207,7 @@ const handleCreate = async (questionId) => {
             <div key={categoryName} style={{ display: activeTab === categoryName ? 'block' : 'none' }}>
               {groupedQuestions[categoryName].map((question) => {
                 const answer = question.answer || {};
-                const isAnswerProvided = answer.answer_respondent && !isEditing[question.id];
-                const isExistingAnswer = !!answer.id;
+                const isAnswerProvided = !!answer.answer_respondent; // Verifica se a resposta já foi dada
                 return (
                   <div key={question.id} className="box">
                     <div className="columns is-vcentered">
@@ -240,60 +216,67 @@ const handleCreate = async (questionId) => {
                         <p className="mb-4">{question.recommendation}</p>
                       </div>
 
-                      {/* Botão de edição no canto superior direito */}
+                      {/* Ícone de edição somente se houver uma resposta */}
                       <div className="column is-narrow">
                         <div className="is-pulled-right">
-                          <FontAwesomeIcon
-                            icon={isEditing[question.id] ? faTimes : faEdit}
-                            className="is-clickable"
-                            onClick={() => toggleEdit(question.id)}
-                          />
+                          {isAnswerProvided && (
+                            <FontAwesomeIcon
+                              icon={isEditing[question.id] ? faTimes : faEdit}
+                              className="is-clickable"
+                              onClick={() => toggleEdit(question.id)}
+                            />
+                          )}
                         </div>
                       </div>
                     </div>
 
-                    {/* Se a pergunta já tiver resposta e não estiver em edição */}
-                    {isAnswerProvided ? (
+                    {/* Exibe a resposta se já tiver sido fornecida e não estiver em modo de edição */}
+                    {isAnswerProvided && !isEditing[question.id] ? (
                       <div className="columns">
                         <div className="column is-one-third">
-                        <p><strong>Resposta da empresa: </strong> 
-                          <span className={`tag ${ANSWER_CHOICES_MAP[answer.answer_respondent]?.color || 'is-light'}`}>
-                            {ANSWER_CHOICES_MAP[answer.answer_respondent]?.label || 'Aguardando resposta'}
-                          </span>
-                        </p>
+                          <p><strong>Resposta da empresa: </strong> 
+                            <span className={`tag ${ANSWER_CHOICES_MAP[answer.answer_respondent]?.color || 'is-light'}`}>
+                              {ANSWER_CHOICES_MAP[answer.answer_respondent]?.label || 'Aguardando resposta'}
+                            </span>
+                          </p>
                         </div>
-                        <div className="column ">
-                        {answer.attachment_respondent ? (
-                          <div>
-                            <button
-                              onClick={() => handleDownload(answer.id, answer.attachment_respondent.split('/').pop())}
-                            >
-                              <FontAwesomeIcon icon={faFileDownload} /> Baixar Anexo
-                            </button>
-                          </div>
-                        ): (
-                          <p className="has-text-grey">Nenhum anexo disponível.</p>
-                        )}
+                        <div className="column">
+                          {answer.attachment_respondent ? (
+                            <div>
+                              <button
+                                onClick={() => handleDownload(answer.id, answer.attachment_respondent.split('/').pop())}
+                              >
+                                <FontAwesomeIcon icon={faFileDownload} /> Baixar Anexo
+                              </button>
+                            </div>
+                          ) : (
+                            <p className="has-text-grey">Nenhum anexo disponível.</p>
+                          )}
                         </div>
                       </div>
                     ) : (
+                      // Exibe os campos de seleção de resposta e upload de arquivo se a pergunta não tiver resposta ou estiver em modo de edição
                       <div className="columns">
                         <div className="column is-one-third">
                           <div className="field">
                             <label className="label">Resposta:</label>
                             <div className="control">
                               <div className="select is-fullwidth">
-                                <select
-                                  onChange={(e) => handleSelectChange(question.id, e.target.value)}
-                                  value={selectedAnswers[question.id] || ''}
+                              <select
+                                onChange={(e) => handleSelectChange(question.id, e.target.value)}
+                                value={
+                                  isEditing[question.id] 
+                                    ? selectedAnswers[question.id] || answer.answer_respondent || '' // Se estiver editando, pega a resposta selecionada ou a resposta existente
+                                    : ''  // Se não estiver editando, deixa vazio
+                                  }
                                 >
-                                  <option value="" disabled>Selecione uma resposta</option>
-                                  {Object.entries(ANSWER_CHOICES_MAP).map(([value, { label }]) => (
-                                    <option key={value} value={value}>
-                                      {label}
-                                    </option>
-                                  ))}
-                                </select>
+                                <option value="" disabled>Selecione uma resposta</option>
+                                {Object.entries(ANSWER_CHOICES_MAP).map(([value, { label }]) => (
+                                  <option key={value} value={value}>
+                                    {label}
+                                  </option>
+                                ))}
+                              </select>
                               </div>
                             </div>
                           </div>
@@ -313,9 +296,9 @@ const handleCreate = async (questionId) => {
                                   <span className="file-icon">
                                     <i className="fas fa-upload"></i>
                                   </span>
-                                  <span className="file-label">Escolha um arquivo{answer.id}</span>
+                                  <span className="file-label">Escolha um arquivo</span>
                                 </span>
-                                
+
                                 <span className="file-name">
                                   {fileNames[question.id] || 'Nenhum arquivo selecionado'}
                                 </span>
@@ -326,20 +309,14 @@ const handleCreate = async (questionId) => {
                       </div>
                     )}
 
-                    {/* Botão para salvar a resposta individual */}
-                    {isEditing[question.id] && (
+                    {/* Exibe o botão de salvar apenas se estiver em modo de edição ou se não houver resposta */}
+                    {(isEditing[question.id] || !isAnswerProvided) && (
                       <button
-                      className="button is-primary mt-2"
-                      onClick={() => {
-                        if (isExistingAnswer) {
-                          handleSave(question.id, answer.id);
-                        } else {
-                          handleCreate(question.id);
-                        }
-                      }}
-                    >
-                      Salvar Resposta
-                    </button>
+                        className="button is-primary mt-2"
+                        onClick={() => handleSubmit(question.id,  answer.id )}
+                      >
+                        Salvar Resposta
+                      </button>
                     )}
                   </div>
                 );

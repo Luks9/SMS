@@ -50,10 +50,10 @@ const EvaluationCards = ({ evaluations }) => {
                     <strong>Competencia:</strong> {moment(evaluation.period).format('MMMM YYYY').toUpperCase()} <br />
                     <strong>Pontuação:</strong> {evaluation.score} <br />
                     <strong>Data de Inicio:</strong>{" "}
-                    {new Date(evaluation.created_at).toLocaleDateString()}
+                    {moment(evaluation.created_at).format('DD/MM/YYYY')}
                     <br />
                     <strong>Validade:</strong>{" "}
-                    {new Date(evaluation.valid_until).toLocaleDateString()}
+                    {moment(evaluation.valid_until).format('DD/MM/YYYY')}
                     <br />
                     <strong>Respondidas:</strong> {evaluation.answered_questions}{" "}
                     / {evaluation.total_questions}

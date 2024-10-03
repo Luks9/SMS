@@ -1,5 +1,5 @@
 #serializers.py
-
+from django.utils import timezone
 from rest_framework import serializers
 from .models import Company, CategoryQuestion, Question, Form, Answer, Subcategory, Evaluation
 
@@ -76,7 +76,7 @@ class EvaluationSerializer(serializers.ModelSerializer):
 
     def get_answered_questions(self, obj):
         # Conta as respostas que foram respondidas pelo respondente
-        return Answer.objects.filter(evaluation=obj).exclude(answer_respondent__isnull=True).exclude(answer_respondent='').count()
+        return Answer.objects.filter(evaluation=obj).exclude(answer_respondent__in=[None, '']).count()
 
     def get_unanswered_questions(self, obj):
         # Calcula as perguntas não respondidas
@@ -115,6 +115,16 @@ class AnswerSerializer(serializers.ModelSerializer):
         model = Answer
         fields = '__all__'
     
+    def validate(self, data):
+        # Avaliação associada à resposta
+        evaluation = data.get('evaluation', self.instance.evaluation if self.instance else None)
+
+        if evaluation and evaluation.valid_until and evaluation.valid_until < timezone.now().date():
+            raise serializers.ValidationError("A data limite para responder esta avaliação já expirou.")
+
+        return data
+
+
     def validate_attachment_respondent(self, value):
         if value and value.size > 1024 * 1024 * 5:  # Limite de 5 MB
             raise serializers.ValidationError("O arquivo não pode exceder 5MB.")

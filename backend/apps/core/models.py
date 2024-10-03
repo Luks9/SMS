@@ -119,23 +119,27 @@ class Answer(models.Model):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=['evaluation', 'question'], name='unique_answer_per_question_in_evaluation')
+            models.UniqueConstraint(fields=['evaluation', 'question'] , name='unique_answer_per_question_in_evaluation')
         ]
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)  # Salva a resposta normalmente
+
+        # Verifica se a avaliação possui pelo menos uma resposta
+        if self.evaluation.answers.exists():
+            # Atualiza o status da avaliação para 'IN_PROGRESS' se houver pelo menos uma resposta
+            if self.evaluation.status != 'IN_PROGRESS':  # Evita salvar se já estiver 'IN_PROGRESS'
+                self.evaluation.status = 'IN_PROGRESS'
+                self.evaluation.save()
+            
+            # Verifica se a data de validade "valid_until" já passou
+        if self.evaluation.valid_until and self.evaluation.valid_until < timezone.now().date():
+            print(self.evaluation.valid_until)
+            self.evaluation.status = 'COMPLETED'
+
+        self.evaluation.save()
 
     def __str__(self):
         return f"Answer {self.id} - {self.get_answer_respondent_display()}"
     
-
-    # def get_answer_value(self, answer):
-    #     # Atribui um valor numérico com base no tipo de resposta
-    #     if answer == 'C':
-    #         return 1
-    #     elif answer == 'NC':
-    #         return 0
-    #     elif answer == 'NA':
-    #         return 0.5
-    #     elif answer == 'A':
-    #         return 0.75
-    #     return 0
-
 
