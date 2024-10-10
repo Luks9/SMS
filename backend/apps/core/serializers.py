@@ -1,4 +1,4 @@
-#serializers.py
+#apps/core/serializers.py
 from django.utils import timezone
 from rest_framework import serializers
 from .models import Company, CategoryQuestion, Question, Form, Answer, Subcategory, Evaluation

@@ -1,3 +1,4 @@
+#apps/users/views.py
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -8,7 +9,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from django.contrib.auth.models import User
 from .serializers import UserProfileSerializer, CustomLoginSerializer
-from apps.core.serializers import CompanySerializer  # Importar o CompanySerializer
+from apps.core.serializers import CompanySerializer
 
 class UserProfileView(APIView):
     permission_classes = [IsAuthenticated]
@@ -46,7 +47,6 @@ class CustomLoginView(APIView):
             refresh = RefreshToken.for_user(user)
             company = user.companies.first()
             company_data = CompanySerializer(company).data if company else None  # Serializa a empresa
-
             response_data = {
                 'token': str(refresh.access_token),
                 'user': {
@@ -57,9 +57,9 @@ class CustomLoginView(APIView):
                     'company': company_data,
                 },
             }
-
-            serializer = self.serializer_class(response_data)
-            response = Response(serializer.data, status=status.HTTP_200_OK)
+            print(response_data)
+            #serializer = self.serializer_class(response_data)
+            response = Response(response_data, status=status.HTTP_200_OK)
             response.set_cookie(
                 key='refreshToken',
                 value=str(refresh),

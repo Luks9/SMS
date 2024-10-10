@@ -1,4 +1,4 @@
-#views.py
+#apps/core/views.py
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -160,8 +160,9 @@ class EvaluationViewSet(viewsets.ModelViewSet):
         except Company.DoesNotExist:
             return Response({"detail": "Empresa não encontrada."}, status=status.HTTP_404_NOT_FOUND)
 
+        is_active = request.query_params.get('is_active', 'true').lower() == 'true'
         # Obter todas as avaliações da empresa
-        evaluations = Evaluation.objects.filter(company=company)
+        evaluations = Evaluation.objects.filter(company=company, is_active = is_active)
 
         # Serializar as avaliações e retornar a resposta
         serializer = EvaluationSerializer(evaluations, many=True)

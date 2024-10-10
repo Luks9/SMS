@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 import moment from 'moment';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faTrashCan, faEdit } from '@fortawesome/free-solid-svg-icons';
+import { faTrashCan, faEdit, faCalculator } from '@fortawesome/free-solid-svg-icons';
 import { AuthContext } from '../../context/AuthContext';
 import Pagination from './Pagination'; 
 import 'moment/locale/pt-br';
@@ -27,6 +27,21 @@ const EvaluationTable = ({ evaluations, refreshEvaluations }) => {
 
   const handleEdit = (evaluation) => {
     // Função de edição
+  };
+
+  const calculate = async (evaluation) => {
+    try {
+    const token = getToken();
+    await axios.get(`/api/evaluation/${evaluation}/calculate-score/`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    alert('Nota calculada')
+    refreshEvaluations();
+  } catch(error){
+    console.error('Erro ao calcular a avaliação:', error);
+  }
   };
 
   const handleDelete = async (id) => {
@@ -70,15 +85,17 @@ const EvaluationTable = ({ evaluations, refreshEvaluations }) => {
       <table className="table is-fullwidth is-striped">
         <thead>
           <tr>
-            <th>Competencia</th>
+            <th>Competência</th>
             <th>Empresa</th>
             <th>Formulário</th>
             <th>Data Limite</th>
+            <th>Nota</th>
             <th>Status</th>
-            <th>Progresso</th> {/* Nova coluna para o progresso */}
-            <th>Editar</th>
+            <th>Progresso</th>
+            {/* <th>Editar</th> */}
             <th>Excluir</th>
-            <th>Ver Respostas</th> 
+            <th>Calcular Nota</th>
+            <th>Respostas</th>
           </tr>
         </thead>
         <tbody>
@@ -92,6 +109,7 @@ const EvaluationTable = ({ evaluations, refreshEvaluations }) => {
                 <td>{evaluation.company_name}</td>
                 <td>{evaluation.form_name}</td>
                 <td>{moment(evaluation.valid_until).format('DD/MM/YYYY')}</td>
+                <td>{evaluation.score.toFixed(2)}</td>
                 <td>
                   <span className={`tag ${STATUS_CHOICES[evaluation.status]?.className}`}>
                     {STATUS_CHOICES[evaluation.status]?.label || evaluation.status}
@@ -106,20 +124,28 @@ const EvaluationTable = ({ evaluations, refreshEvaluations }) => {
                     {progressPercentage}%
                   </progress>
                 </td>
-                <td>
+                {/* <td>
                   <button
                     className="button is-light"
                     onClick={() => handleEdit(evaluation.id)}
                   >
                     <FontAwesomeIcon icon={faEdit} size="lg" />
                   </button>
-                </td>
-                <td>
+                </td> */}
+                <td style={{ textAlign: 'center' }}>
                   <button
                     className="button is-light"
                     onClick={() => handleDelete(evaluation.id)}
                   >
                     <FontAwesomeIcon icon={faTrashCan} size="lg" color="red" />
+                  </button>
+                </td>
+                <td style={{ textAlign: 'center' }}>
+                  <button
+                    className="button is-light"
+                    onClick={() => calculate(evaluation.id) }
+                  >
+                    <FontAwesomeIcon icon={faCalculator} size="lg" />
                   </button>
                 </td>
                 <td>

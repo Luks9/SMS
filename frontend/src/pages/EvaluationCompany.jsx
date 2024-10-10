@@ -5,7 +5,8 @@ import EvaluationCards from '../components/EvaluationCards';
 
 const EvaluationCompany = () => {
     const companyId = localStorage.getItem("companyId")
-    const { evaluations, loading, error } = useFetchCompanyEvaluations(companyId);
+    const is_active = true
+    const { evaluations, loading, error } = useFetchCompanyEvaluations(companyId, is_active);
 
     console.log(evaluations)
     return (

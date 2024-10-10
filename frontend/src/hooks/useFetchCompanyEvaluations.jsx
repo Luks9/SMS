@@ -2,7 +2,7 @@ import { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
 
-const useFetchCompanyEvaluations = (companyId) => {
+const useFetchCompanyEvaluations = (companyId, is_active) => {
   const { getToken } = useContext(AuthContext);
 
   const [evaluations, setEvaluations] = useState([]);
@@ -13,7 +13,7 @@ const useFetchCompanyEvaluations = (companyId) => {
   const fetchEvaluationsByCompany = async (companyId) => {
     try {
       const token = getToken();
-      const response = await axios.get(`/api/evaluation/evaluations-by-company/${companyId}/`, {
+      const response = await axios.get(`/api/evaluation/evaluations-by-company/${companyId}/?is_active=${is_active}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },

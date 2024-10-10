@@ -38,7 +38,7 @@ const EvaluationCards = ({ evaluations }) => {
             <div key={evaluation.id} className="column is-one-third">
               <div className="card">
                 <header className="card-header">
-                  <p className="card-header-title">{evaluation.form_name}</p>
+                  <p className="card-header-title">{evaluation.form_name} - {moment(evaluation.period).format('MMM YYYY').toUpperCase()}</p>
                   <button className="card-header-icon" aria-label="more options">
                     <span className="icon">
                       <i className="fas fa-angle-down" aria-hidden="true"></i>
@@ -47,13 +47,13 @@ const EvaluationCards = ({ evaluations }) => {
                 </header>
                 <div className="card-content">
                   <div className="content">
-                    <strong>Competencia:</strong> {moment(evaluation.period).format('MMMM YYYY').toUpperCase()} <br />
-                    <strong>Pontuação:</strong> {evaluation.score} <br />
-                    <strong>Data de Inicio:</strong>{" "}
-                    {moment(evaluation.created_at).format('DD/MM/YYYY')}
+                    <strong>Competencia:</strong> {moment(evaluation.period).format('MMMM YYYY').toUpperCase()}
                     <br />
                     <strong>Validade:</strong>{" "}
                     {moment(evaluation.valid_until).format('DD/MM/YYYY')}
+                    <br />
+                    <strong>Nota: </strong>
+                    {evaluation.score.toFixed(2)}
                     <br />
                     <strong>Respondidas:</strong> {evaluation.answered_questions}{" "}
                     / {evaluation.total_questions}
