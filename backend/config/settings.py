@@ -41,6 +41,7 @@ SPECTACULAR_SETTINGS = {
         {'name': 'Formulários', 'description': 'Operações relacionadas a formulários'},
         {'name': 'Respostas', 'description': 'Operações relacionadas a respostas'},
     ],
+    
 }
 
 # Application definition

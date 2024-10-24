@@ -1,7 +1,7 @@
 import React, { useContext } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faTachometerAlt, faFileAlt, faCog, faSignOutAlt, faPaperPlane, faFileContract,  } from '@fortawesome/free-solid-svg-icons';
+import { faTachometerAlt, faFileAlt, faCog, faSignOutAlt, faPaperPlane, faFileContract } from '@fortawesome/free-solid-svg-icons';
 import '../styles/Sidebar.css';
 import { AuthContext } from '../context/AuthContext';
 
@@ -39,6 +39,12 @@ const Sidebar = () => {
       allowed: ['empresa'],
     },
     {
+      to: '/empresa-plano-acao',
+      label: 'Planos de Ação',
+      icon: faPaperPlane,
+      allowed: ['empresa'],
+    },
+    {
       to: '/settings',
       label: 'Configurações',
       icon: faCog,
@@ -49,7 +55,7 @@ const Sidebar = () => {
   return (
     <aside className="sidebar">
       <header className="sidebar-header">
-        <h2>SMS</h2>
+        <h2>SMS AVALIA</h2>
       </header>
 
       <div className="sidebar-content">

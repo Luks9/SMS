@@ -1,7 +1,16 @@
 #apps/core/serializers.py
 from django.utils import timezone
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
-from .models import Company, CategoryQuestion, Question, Form, Answer, Subcategory, Evaluation
+from .models import Company, CategoryQuestion, Question, Form, Answer, Subcategory, Evaluation, ActionPlan
+
+
+class ScoreResponseSerializer(serializers.Serializer):
+    evaluation_id = serializers.IntegerField()
+    total_score = serializers.FloatField()
+    total_weight = serializers.FloatField()
+    message = serializers.CharField()
+
 
 class CompanySerializer(serializers.ModelSerializer):
     class Meta:
@@ -35,6 +44,7 @@ class FormSerializer(serializers.ModelSerializer):
         model = Form
         fields = ['id', 'name', 'is_active', 'categories', 'category_names']
 
+    @extend_schema_field(serializers.ListField(child=serializers.CharField()))
     def get_category_names(self, obj):
         return [category.name for category in obj.categories.all()]
     
@@ -42,6 +52,7 @@ class FormSerializer(serializers.ModelSerializer):
 class EvaluationSerializer(serializers.ModelSerializer):
     company_name = serializers.CharField(source="company.name", read_only=True)
     form_name = serializers.CharField(source="form.name", read_only=True)
+    action_plan = serializers.SerializerMethodField()
     
     # Novos campos calculados
     total_questions = serializers.SerializerMethodField()
@@ -66,23 +77,35 @@ class EvaluationSerializer(serializers.ModelSerializer):
             'period',
             'total_questions',  # Incluindo o total de perguntas
             'answered_questions',  # Incluindo o total de perguntas respondidas
-            'unanswered_questions'  # Incluindo o total de perguntas não respondidas
+            'unanswered_questions',
+            'action_plan'
         ]
     
     # Métodos para os campos adicionados
-    def get_total_questions(self, obj):
+    @extend_schema_field(serializers.IntegerField())
+    def get_total_questions(self, obj) -> int:
         # Pega todas as perguntas relacionadas ao formulário da avaliação
         return Question.objects.filter(category__in=obj.form.categories.all()).count()
 
-    def get_answered_questions(self, obj):
+
+    @extend_schema_field(serializers.IntegerField())
+    def get_answered_questions(self, obj)-> int:
         # Conta as respostas que foram respondidas pelo respondente
         return Answer.objects.filter(evaluation=obj).exclude(answer_respondent__in=[None, '']).count()
-
-    def get_unanswered_questions(self, obj):
+    
+    @extend_schema_field(serializers.IntegerField())
+    def get_unanswered_questions(self, obj) -> int:
         # Calcula as perguntas não respondidas
         total_questions = self.get_total_questions(obj)
         answered_questions = self.get_answered_questions(obj)
         return total_questions - answered_questions
+    
+    @extend_schema_field(serializers.IntegerField(allow_null=True))
+    def get_action_plan(self, obj):
+        # Retorna o ID do plano de ação associado à avaliação ou None se não existir
+        action_plan = obj.action_plans.first()  # Como só existe um plano de ação, pegamos o primeiro
+        return action_plan.id if action_plan else None
+
 
     def validate(self, data):
         # Verifica se a requisição é um POST
@@ -206,6 +229,7 @@ class EvaluationDetailSerializer(serializers.ModelSerializer):
             'period'
         ]
 
+    @extend_schema_field(serializers.ListField(child=serializers.DictField()))
     def get_questions(self, obj):
         questions = Question.objects.filter(category__in=obj.form.categories.all())
         return QuestionWithAnswerSerializer(questions, many=True, context={'evaluation': obj, 'request': self.context.get('request')}).data
@@ -233,3 +257,19 @@ class EvaluationProgressSerializer(serializers.ModelSerializer):
         total_questions = self.get_total_questions(obj)
         answered_questions = self.get_answered_questions(obj)
         return total_questions - answered_questions
+
+
+class ActionPlanSerializer(serializers.ModelSerializer):
+    company_name = serializers.CharField(source='company.name', read_only=True)
+
+    class Meta:
+        model = ActionPlan
+        fields = ['id', 'company', 'evaluation', 'description', 'response_company', 'start_date', 'end_date', 'responsible', 'status', 'attachment', 'company_name']
+
+    def validate(self, data):
+        # Verificar se o plano de ação já expirou
+        end_date = data.get('end_date', self.instance.end_date if self.instance else None)
+        if end_date and end_date < timezone.now().date():
+            raise serializers.ValidationError("O prazo deste plano de ação já expirou.")
+        
+        return data

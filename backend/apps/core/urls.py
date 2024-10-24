@@ -9,6 +9,7 @@ from .views import (
     AnswerViewSet,
     SubCategoryViewSet,
     EvaluationViewSet,
+    ActionPlanViewSet,
     download_attachment_respondent,
 )
 
@@ -21,6 +22,7 @@ router.register(r'questions', QuestionViewSet)
 router.register(r'forms', FormViewSet)
 router.register(r'evaluation', EvaluationViewSet)
 router.register(r'answers', AnswerViewSet)
+router.register(r'action-plans', ActionPlanViewSet)
 
 # Combinação de URLs do router com a nova rota customizada
 urlpatterns = [

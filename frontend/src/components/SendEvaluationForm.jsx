@@ -1,8 +1,10 @@
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useContext} from 'react';
 import axios from 'axios';
 import Select from 'react-select';
 import { AuthContext } from '../context/AuthContext';
 import Message from './Message';
+import moment from 'moment';
+import 'moment/locale/pt-br';
 
 const SendEvaluationForm = ({ forms, companies, onEvaluationSent }) => {
   const { getToken, user } = useContext(AuthContext);
@@ -12,6 +14,8 @@ const SendEvaluationForm = ({ forms, companies, onEvaluationSent }) => {
     const now = new Date();
     return now.toISOString().slice(0, 7);
   };
+
+  const today = moment().format('YYYY-MM-DD');
 
   const initialFormData = {
     completed_at: new Date().toISOString(), // Data e hora atual
@@ -154,6 +158,7 @@ const SendEvaluationForm = ({ forms, companies, onEvaluationSent }) => {
                 className="input"
                 name="valid_until"
                 type="date"
+                min={today}
                 value={formData.valid_until}
                 onChange={handleChange}
                 required

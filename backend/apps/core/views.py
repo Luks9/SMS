@@ -2,10 +2,13 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from drf_spectacular.utils import extend_schema, OpenApiParameter
-from django.http import FileResponse
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse, OpenApiTypes
+import os
+from apps.users.utils.permissions import user_has_access_to_company
+from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404
-from .models import Company, CategoryQuestion, Question, Form, Answer, Subcategory, Evaluation
+
+from .models import Company, CategoryQuestion, Question, Form, Answer, Subcategory, Evaluation, ActionPlan
 from .serializers import (
     CompanySerializer, 
     CategoryQuestionSerializer, 
@@ -15,14 +18,18 @@ from .serializers import (
     SubcategorySerializer,
     EvaluationSerializer,
     EvaluationDetailSerializer,
-    EvaluationProgressSerializer
+    EvaluationProgressSerializer,
+    ActionPlanSerializer,
+    ScoreResponseSerializer,
+    
 )
+
+
 
 @extend_schema(tags=['Empresas'])
 class CompanyViewSet(viewsets.ModelViewSet):
     queryset = Company.objects.all()
     serializer_class = CompanySerializer
-
 
 
 @extend_schema(tags=['Categorias'])
@@ -70,7 +77,9 @@ class EvaluationViewSet(viewsets.ModelViewSet):
     queryset = Evaluation.objects.all()
     serializer_class = EvaluationSerializer
 
-
+    @extend_schema(
+        responses=ScoreResponseSerializer
+    )
     @action(detail=True, methods=['get'], url_path='calculate-score')
     def calculate_score(self, request, pk=None):
         """
@@ -154,11 +163,15 @@ class EvaluationViewSet(viewsets.ModelViewSet):
         """
         Retorna todas as avaliações pertencentes a uma empresa com base no ID fornecido.
         """
-        # Verificar se a empresa existe
+        # Verificar se a empresa existe        
         try:
             company = Company.objects.get(id=company_id)
         except Company.DoesNotExist:
             return Response({"detail": "Empresa não encontrada."}, status=status.HTTP_404_NOT_FOUND)
+
+        access_check = user_has_access_to_company(request.user, company)
+        if access_check is not True:
+            return access_check
 
         is_active = request.query_params.get('is_active', 'true').lower() == 'true'
         # Obter todas as avaliações da empresa
@@ -215,3 +228,47 @@ def download_attachment_respondent(request, answer_id):
     response = FileResponse(open(file_path, 'rb'))
     response['Content-Disposition'] = f'attachment; filename="{answer.attachment_respondent.name}"'
     return response
+
+
+@extend_schema(tags=['Plano de Ação'])
+class ActionPlanViewSet(viewsets.ModelViewSet):
+    queryset = ActionPlan.objects.all()
+    serializer_class = ActionPlanSerializer
+
+    @extend_schema(
+        responses={200: OpenApiResponse(response=OpenApiTypes.BINARY, description="Successful file download")}
+    )
+    @action(detail=True, methods=['get'], url_path='download_attachment_plan_action')
+    def download_attachment_plan_action(self, request, pk=None):
+        plan_action = get_object_or_404(ActionPlan, pk=pk)
+
+        # Verifica se o anexo existe
+        if not plan_action.attachment or not os.path.exists(plan_action.attachment.path):
+            raise Http404("Anexo não encontrado.")
+
+        # Retorna o arquivo diretamente com FileResponse sem 'with open'
+        response = FileResponse(open(plan_action.attachment.path, 'rb'))
+        response['Content-Disposition'] = f'attachment; filename="{os.path.basename(plan_action.attachment.name)}"'
+        return response
+
+
+    @action(detail=True, methods=['get'], url_path='by-company')
+    def by_company(self, request, pk=None):
+        """
+        Retorna todas os planos pertencentes a uma empresa com base no ID fornecido.
+        """
+        
+        try:
+            company = get_object_or_404(Company, pk=pk)
+        except Company.DoesNotExist:
+            return Response({"detail": "Empresa não encontrada."}, status=status.HTTP_404_NOT_FOUND)
+        
+         # Verifica se o usuário tem acesso à empresa
+        access_check = user_has_access_to_company(request.user, company)
+        if access_check is not True:
+            return access_check
+        
+        action_plans = ActionPlan.objects.filter(company=company)
+        serializer = self.get_serializer(action_plans, many=True)
+ 
+        return Response(serializer.data, status=status.HTTP_200_OK)

@@ -7,17 +7,25 @@ import Formularios from './pages/Formularios';
 import EnvioAvaliacoes from './pages/EnvioAvaliacoes';
 import EvaluationDetails from './pages/EvaluationDetails';
 import EvaluationCompany from './pages/EvaluationCompany';
+import ActionPlanCompany from './pages/ActionPlanCompany';
+import ActionPlanAnswerForm from './components/action_plan/ActionPlanAnswerForm';
+import ActionPlanView from './components/action_plan/ActionPlanView';
 import CompanyAnswer from './components/CompanyAnswer';
+import ViewActionPlan from './components/action_plan/ViewActionPlan';
+import CreateActionPlan from './components/action_plan/CreateActionPlan';
 import { AdminRoute, EmpresaRoute, PrivateRoute } from './components/PrivateRoute';
 import { ThemeProvider } from './context/ThemeContext';
 
 const App = () => {
+  const companyId = localStorage.getItem("companyId");
+
   return (
     <ThemeProvider>
       <Routes>
+        {/* Rota de Login */}
         <Route path="/login" element={<Login />} />
 
-        {/* Rotas para administrador */}
+        {/* Rotas para Administrador */}
         <Route
           path="/admin-dashboard"
           element={
@@ -26,8 +34,48 @@ const App = () => {
             </AdminRoute>
           }
         />
+        <Route
+          path="/action-plan/:actionPlanId/view"
+          element={
+            <AdminRoute>
+              <ViewActionPlan />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/action-plan/:evaluationId/create"
+          element={
+            <AdminRoute>
+              <CreateActionPlan />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/enviar-avaliacao"
+          element={
+            <AdminRoute>
+              <EnvioAvaliacoes />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/formularios"
+          element={
+            <AdminRoute>
+              <Formularios />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/evaluation/:id/details"
+          element={
+            <AdminRoute>
+              <EvaluationDetails />
+            </AdminRoute>
+          }
+        />
 
-        {/* Rotas para empresa */}
+        {/* Rotas para Empresa */}
         <Route
           path="/empresa-dashboard"
           element={
@@ -40,47 +88,43 @@ const App = () => {
           path="/empresa-avaliacao"
           element={
             <EmpresaRoute>
-              <EvaluationCompany />
+              <EvaluationCompany companyId={companyId} />
             </EmpresaRoute>
           }
         />
-
         <Route
-          path="/enviar-avaliacao"
+          path="/empresa-plano-acao"
           element={
-            <AdminRoute>
-              <EnvioAvaliacoes />
-            </AdminRoute>
+            <EmpresaRoute>
+              <ActionPlanCompany />
+            </EmpresaRoute>
           }
         />
-        <Route 
-          path="/evaluation/:id/details" 
+        <Route
+          path="/action-plan/:actionPlanId/answer"
           element={
-            <AdminRoute>
-              <EvaluationDetails />
-            </AdminRoute>
-          } 
+            <EmpresaRoute>
+              <ActionPlanAnswerForm />
+            </EmpresaRoute>
+          }
         />
-
-        <Route 
-          path="/evaluation/:id/answer" 
+        <Route
+          path="/evaluation/:id/answer"
           element={
             <EmpresaRoute>
               <CompanyAnswer />
             </EmpresaRoute>
-          } 
-        />
-
-        <Route
-          path="/formularios"
-          element={
-            <AdminRoute>
-              <Formularios />
-            </AdminRoute>
           }
         />
-
-        {/* Rota de redirecionamento padrão */}
+        <Route
+          path="/action-plan/:actionPlanId"
+          element={
+            <EmpresaRoute>
+              <ActionPlanView />
+            </EmpresaRoute>
+          }
+        />
+        {/* Rota padrão - Redirecionamento baseado na autenticação */}
         <Route
           path="/"
           element={

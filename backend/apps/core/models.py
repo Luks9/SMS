@@ -143,3 +143,25 @@ class Answer(models.Model):
         return f"Answer {self.id} - {self.get_answer_respondent_display()}"
     
 
+def rename_attachment_action_plan(instance, filename):
+    ext = filename.split('.')[-1]
+    new_filename = f"{uuid.uuid4()}.{ext}"
+    return os.path.join('attachments', 'action_plan', timezone.now().strftime("%Y/%m"), new_filename)
+
+class ActionPlan(models.Model):
+    company = models.ForeignKey(Company, on_delete=models.PROTECT, related_name='action_plans')
+    evaluation = models.ForeignKey(Evaluation, on_delete=models.CASCADE, related_name='action_plans')
+    description = models.TextField()
+    response_company = models.TextField(null=True, blank=True)
+    start_date = models.DateField(auto_now_add=True)
+    end_date = models.DateField(null=True, blank=True)
+    responsible = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    status = models.CharField(max_length=20, choices=[
+        ('IN_PROGRESS', 'Em Progresso'),
+        ('COMPLETED', 'Concluído'),
+        ('PENDING', 'Pendente'),
+    ], default='PENDING')
+    attachment = models.FileField(upload_to=rename_attachment_action_plan, blank=True, null=True)
+
+    def __str__(self):
+        return f"Action Plan for {self.company.name} - Evaluation {self.evaluation.id}"
