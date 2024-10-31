@@ -7,14 +7,10 @@ import { faTrashCan, faCalculator, faSpinner } from '@fortawesome/free-solid-svg
 import { AuthContext } from '../../context/AuthContext';
 import Pagination from './Pagination'; 
 import 'moment/locale/pt-br';
+import { STATUS_CHOICES } from '../../utils/StatusChoices';
 
 moment.locale('pt-br');
 
-const STATUS_CHOICES = {
-  'PENDING': { label: 'Pendente', className: 'is-danger' },
-  'IN_PROGRESS': { label: 'Em Progresso', className: 'is-warning' },
-  'COMPLETED': { label: 'Concluída', className: 'is-success' },
-};
 
 const EvaluationTable = ({ evaluations, refreshEvaluations }) => {
   const { getToken } = useContext(AuthContext);
@@ -90,8 +86,12 @@ const EvaluationTable = ({ evaluations, refreshEvaluations }) => {
   };
 
   // Função para verificar se o Plano de Ação deve estar disponível
-  const shouldShowActionPlan = (score) => {
-    return score < 85;
+  const shouldShowActionPlan = (evaluation) => {
+    const validUntilMoment = moment(evaluation.valid_until); // Converter valid_until para um objeto moment
+    if ((validUntilMoment.isBefore(moment())) && evaluation.score < 85) {
+      return true;
+    }
+    return false;
   };
 
   if (evaluations.length === 0) {
@@ -174,7 +174,7 @@ const EvaluationTable = ({ evaluations, refreshEvaluations }) => {
                   </Link>
                 </td>
                 <td>
-                {shouldShowActionPlan(evaluation.score) ? (
+                {shouldShowActionPlan(evaluation) ? (
                   evaluation.action_plan ? (
                     // Se existir um ID de action_plan, redireciona para a página de monitoramento do plano existente
                     <Link to={`/action-plan/${evaluation.action_plan}/view`} className="button is-info is-light">

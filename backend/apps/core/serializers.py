@@ -269,7 +269,28 @@ class ActionPlanSerializer(serializers.ModelSerializer):
     def validate(self, data):
         # Verificar se o plano de ação já expirou
         end_date = data.get('end_date', self.instance.end_date if self.instance else None)
+        
         if end_date and end_date < timezone.now().date():
+            # Se expirou, verifica se o status ainda não está como 'COMPLETED'
+            if self.instance and self.instance.status != 'COMPLETED':
+                # Atualiza o status para 'COMPLETED'
+                self.instance.status = 'COMPLETED'
+                self.instance.save()  # Salva imediatamente a mudança
+            
             raise serializers.ValidationError("O prazo deste plano de ação já expirou.")
         
         return data
+    
+    def update(self, instance, validated_data):
+        """
+        Atualiza o status do plano de ação para 'IN_PROGRESS' se houver resposta e o end_date não expirou
+        """
+        # Atualiza os campos normalmente
+        instance = super().update(instance, validated_data)
+        
+        # Verifica se há uma resposta da empresa
+        if instance.response_company and instance.end_date >= timezone.now().date():
+            instance.status = "IN_PROGRESS"
+        
+        instance.save()
+        return instance

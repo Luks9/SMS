@@ -44,12 +44,12 @@ const Sidebar = () => {
       icon: faPaperPlane,
       allowed: ['empresa'],
     },
-    {
-      to: '/settings',
-      label: 'Configurações',
-      icon: faCog,
-      allowed: ['admin', 'empresa'],
-    }
+    // {
+    //   to: '/settings',
+    //   label: 'Configurações',
+    //   icon: faCog,
+    //   allowed: ['admin', 'empresa'],
+    // }
   ];
 
   return (

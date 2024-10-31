@@ -139,7 +139,11 @@ class EvaluationViewSet(viewsets.ModelViewSet):
             elif is_active.lower() == 'false':
                 queryset = queryset.filter(is_active=False)
 
+        queryset = queryset.order_by('-period')
+
         return queryset
+
+
     @extend_schema(
         tags=['Avaliações'],
         description="Obtém os detalhes completos de uma avaliação, incluindo perguntas e respostas.",

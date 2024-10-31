@@ -28,6 +28,12 @@ const ActionPlanAnswerForm = () => {
       setAttachment(file);
       setFileName(file ? file.name : 'Nenhum arquivo selecionado'); // Atualiza o nome do arquivo
     };
+
+    useEffect(() => {
+      if (actionPlan) {
+        setResponseCompany(actionPlan.response_company);
+      }
+    }, [actionPlanId]);
   
     // Função para lidar com a submissão do formulário
     const handleSubmit = async (e) => {

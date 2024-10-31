@@ -1,37 +1,14 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React from 'react';
 import { useParams } from 'react-router-dom';
-import axios from 'axios';
 import Layout from '../../components/Layout';
-import { AuthContext } from '../../context/AuthContext';
 import moment from 'moment';
+import useFetchPlanActionDetails from '../../hooks/useFetchPlanActionDetails';
+import { STATUS_CHOICES } from '../../utils/StatusChoices';
 
 const ActionPlanView = () => {
   const { actionPlanId } = useParams(); // Obtém o ID do plano de ação da URL
-  const { getToken } = useContext(AuthContext); // Pega o token de autenticação
-  const [actionPlan, setActionPlan] = useState(null); // Estado para guardar o plano de ação
-  const [loading, setLoading] = useState(true); // Estado de carregamento
+  const { actionPlan, loading } = useFetchPlanActionDetails(actionPlanId);
 
-  // Função para buscar os detalhes do plano de ação
-  const fetchActionPlanDetails = async () => {
-    const token = getToken();
-    try {
-      const response = await axios.get(`/api/action-plan/${actionPlanId}/`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      setActionPlan(response.data);
-    } catch (error) {
-      console.error('Erro ao buscar os dados do plano de ação:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Busca os dados ao montar o componente
-  useEffect(() => {
-    fetchActionPlanDetails();
-  }, [actionPlanId]);
 
   if (loading) {
     return <p>Carregando...</p>;
@@ -46,8 +23,15 @@ const ActionPlanView = () => {
             <p><strong>Empresa:</strong> {actionPlan.company_name}</p>
             <p><strong>Descrição:</strong> {actionPlan.description}</p>
             <p><strong>Data de Término:</strong> {moment(actionPlan.end_date).format('DD/MM/YYYY')}</p>
-            <p><strong>Status:</strong> {actionPlan.status}</p>
+            <p>
+              <strong>Status:</strong>{' '}
+              <span className={`tag ${STATUS_CHOICES[actionPlan.status]?.className}`}>
+                {STATUS_CHOICES[actionPlan.status]?.label || actionPlan.status}
+              </span>
+            </p>
+            <hr />
 
+            <p><strong>Resposta:</strong> {actionPlan.response_company}</p>
             {actionPlan.attachment && (
               <p>
                 <strong>Anexo:</strong> <a href={actionPlan.attachment} download>Baixar Anexo</a>

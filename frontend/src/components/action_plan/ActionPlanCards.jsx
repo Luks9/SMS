@@ -2,16 +2,12 @@ import React from "react";
 import { Link } from 'react-router-dom';
 import moment from 'moment';
 import 'moment/locale/pt-br';
+import { STATUS_CHOICES } from '../../utils/StatusChoices';
 
 moment.locale('pt-br');
 
 const ActionPlanCards = ({ actionsPlans }) => {
 
-    const STATUS_CHOICES = {
-        'PENDING': { label: 'Pendente', className: 'is-danger' },
-        'IN_PROGRESS': { label: 'Em Progresso', className: 'is-warning' },
-        'COMPLETED': { label: 'Concluída', className: 'is-success' },
-    };
 
   return (
     <div className="container">
