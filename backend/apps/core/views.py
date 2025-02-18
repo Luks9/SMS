@@ -7,7 +7,6 @@ import os
 from apps.users.utils.permissions import user_has_access_to_company
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404
-
 from .models import Company, CategoryQuestion, Question, Form, Answer, Subcategory, Evaluation, ActionPlan
 from .serializers import (
     CompanySerializer, 
@@ -85,6 +84,11 @@ class EvaluationViewSet(viewsets.ModelViewSet):
         """
         Calcula a pontuação da avaliação com base nas respostas e no peso das categorias.
         """
+
+        access_check = user_has_access_to_company(request.user)
+        if access_check is not True:
+            return access_check
+
         evaluation = self.get_object()
 
         # Pegamos todas as respostas associadas a essa avaliação

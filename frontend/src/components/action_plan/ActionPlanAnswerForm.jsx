@@ -22,7 +22,6 @@ const ActionPlanAnswerForm = () => {
     const [messageType, setMessageType] = useState(''); // Estado do tipo de mensagem
   
    
-    console.log(actionPlan)
     // Função para lidar com a mudança do arquivo selecionado
     const handleFileChange = (file) => {
       setAttachment(file);

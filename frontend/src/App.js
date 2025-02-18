@@ -18,7 +18,7 @@ import { ThemeProvider } from './context/ThemeContext';
 
 const App = () => {
   const companyId = localStorage.getItem("companyId");
-
+  console.log(companyId)
   return (
     <ThemeProvider>
       <Routes>
@@ -129,7 +129,7 @@ const App = () => {
           path="/"
           element={
             <PrivateRoute>
-              <Navigate to="/dashboard" replace />
+              <Navigate to="/login" replace />
             </PrivateRoute>
           }
         />

@@ -1,10 +1,9 @@
 # apps/users/utils/permissions.py
 
 from rest_framework.response import Response
-from rest_framework import status
-from django.http import Http404
+from rest_framework import status 
 
-def user_has_access_to_company(user, company):
+def user_has_access_to_company(user, company=False):
     """
     Verifica se o usuário é admin ou se está associado à empresa.
     :param user: O usuário que está fazendo a requisição.
@@ -16,9 +15,10 @@ def user_has_access_to_company(user, company):
     if user.is_superuser:
         return True
 
-    # Verifica se o usuário está associado à empresa
-    if hasattr(user, 'companies') and user.companies.filter(id=company.id).exists():
-        return True
+    if company:
+        # Verifica se o usuário está associado à empresa
+        if hasattr(user, 'companies') and user.companies.filter(id=company.id).exists():
+            return True
 
     # Se não for superusuário e não estiver associado, retorna um Response 403
     return Response(
