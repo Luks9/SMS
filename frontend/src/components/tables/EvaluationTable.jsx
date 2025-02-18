@@ -1,9 +1,9 @@
 import React, { useState, useContext } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import moment from 'moment';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faTrashCan, faCalculator, faSpinner } from '@fortawesome/free-solid-svg-icons';
+import { faTrashCan, faCalculator, faSpinner, faClipboardQuestion, faClipboardCheck, faClipboardList, faCheckSquare } from '@fortawesome/free-solid-svg-icons';
 import { AuthContext } from '../../context/AuthContext';
 import Pagination from './Pagination'; 
 import 'moment/locale/pt-br';
@@ -11,9 +11,9 @@ import { STATUS_CHOICES } from '../../utils/StatusChoices';
 
 moment.locale('pt-br');
 
-
 const EvaluationTable = ({ evaluations, refreshEvaluations }) => {
   const { getToken } = useContext(AuthContext);
+  const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
   const [loadingCalculation, setLoadingCalculation] = useState(null);
   const itemsPerPage = 5;
@@ -21,10 +21,6 @@ const EvaluationTable = ({ evaluations, refreshEvaluations }) => {
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = evaluations.slice(indexOfFirstItem, indexOfLastItem);
-
-  // const handleEdit = (evaluation) => {
-  //   // Função de edição
-  // };
 
   const calculate = async (evaluationId) => {
     setLoadingCalculation(evaluationId);
@@ -74,7 +70,6 @@ const EvaluationTable = ({ evaluations, refreshEvaluations }) => {
     return 'is-success';                        
   };
 
-  // Função para obter a cor da nota (label)
   const getScoreLabel = (score) => {
     if (score >= 85) {
       return 'is-success';  // Verde
@@ -85,13 +80,16 @@ const EvaluationTable = ({ evaluations, refreshEvaluations }) => {
     }
   };
 
-  // Função para verificar se o Plano de Ação deve estar disponível
   const shouldShowActionPlan = (evaluation) => {
-    const validUntilMoment = moment(evaluation.valid_until); // Converter valid_until para um objeto moment
+    const validUntilMoment = moment(evaluation.valid_until);
     if ((validUntilMoment.isBefore(moment())) && evaluation.score < 85) {
       return true;
     }
     return false;
+  };
+
+  const redirectTo = (path) => {
+    navigate(path);
   };
 
   if (evaluations.length === 0) {
@@ -100,7 +98,7 @@ const EvaluationTable = ({ evaluations, refreshEvaluations }) => {
 
   return (
     <>
-      <table className="table is-fullwidth is-striped">
+      <table className="table is-fullwidth is-striped is-hoverable">
         <thead>
           <tr>
             <th>Competência</th>
@@ -110,10 +108,7 @@ const EvaluationTable = ({ evaluations, refreshEvaluations }) => {
             <th>Nota</th>
             <th>Status</th>
             <th>Progresso</th>
-            <th>Excluir</th>
-            <th>Calcular Nota</th>
-            <th>Respostas</th>
-            <th>Plano de Ação</th>
+            <th colSpan={4}></th>
           </tr>
         </thead>
         <tbody>
@@ -128,7 +123,6 @@ const EvaluationTable = ({ evaluations, refreshEvaluations }) => {
                 <td>{evaluation.form_name}</td>
                 <td>{moment(evaluation.valid_until).format('DD/MM/YYYY')}</td>
                 <td>
-                  {/* Aqui aplicamos o destaque da nota */}
                   <span className={`tag ${getScoreLabel(evaluation.score)}`}>
                     {evaluation.score.toFixed(2)}
                   </span>
@@ -147,19 +141,21 @@ const EvaluationTable = ({ evaluations, refreshEvaluations }) => {
                     {progressPercentage}%
                   </progress>
                 </td>
-                <td style={{ textAlign: 'center' }}>
+                <td className="px-0" style={{ textAlign: 'center' }}>
                   <button
-                    className="button is-light"
+                    className="button is-light is-small"
                     onClick={() => handleDelete(evaluation.id)}
+                    title='Excluir avaliação'
                   >
                     <FontAwesomeIcon icon={faTrashCan} size="lg" color="red" />
                   </button>
                 </td>
-                <td style={{ textAlign: 'center' }}>
+                <td className="px-0" style={{ textAlign: 'center' }}>
                   <button
-                    className="button is-light"
+                    className="button is-light is-small"
                     onClick={() => calculate(evaluation.id)}
                     disabled={loadingCalculation === evaluation.id}
+                    title='Calcular nota'
                   >
                     {loadingCalculation === evaluation.id ? (
                       <FontAwesomeIcon icon={faSpinner} spin size="lg" />
@@ -168,28 +164,42 @@ const EvaluationTable = ({ evaluations, refreshEvaluations }) => {
                     )}
                   </button>
                 </td>
-                <td>
-                  <Link to={`/evaluation/${evaluation.id}/details`} className="button is-info is-light">
-                    Respostas
-                  </Link>
+                <td className="px-0">
+                  <button 
+                    onClick={() => redirectTo(`/evaluation/${evaluation.id}/details`)} 
+                    className="button is-info is-light is-small"
+                    title='Respostas'
+                  >
+                    <FontAwesomeIcon icon={faClipboardQuestion} size="lg" />
+                  </button>
                 </td>
-                <td>
-                {shouldShowActionPlan(evaluation) ? (
-                  evaluation.action_plan ? (
-                    // Se existir um ID de action_plan, redireciona para a página de monitoramento do plano existente
-                    <Link to={`/action-plan/${evaluation.action_plan}/view`} className="button is-info is-light">
-                       Plano de Ação
-                    </Link>
-                  ) : (
-                    // Se não existir um action_plan, redireciona para a criação de um novo plano
-                    <Link to={`/action-plan/${evaluation.id}/create`} className="button is-warning is-light">
-                      Criar Plano de Ação
-                    </Link>
-                  )
-                ) : (
-                  <span className="tag is-success">Não necessário</span>
-                )}
-
+                <td className="px-0">
+                  {shouldShowActionPlan(evaluation) ? (
+                    evaluation.action_plan ? (
+                      <button 
+                        onClick={() => redirectTo(`/action-plan/${evaluation.action_plan}/view`)} 
+                        className="button is-info is-light is-small"
+                        title='Plano de Ação'
+                      >
+                        <FontAwesomeIcon icon={faClipboardCheck} size="lg" />
+                      </button>
+                    ) : (
+                      <button 
+                        onClick={() => redirectTo(`/action-plan/${evaluation.id}/create`)} 
+                        className="button is-warning is-light is-small"
+                        title='Criar Plano de Ação'
+                      >
+                        <FontAwesomeIcon icon={faClipboardList} size="lg" />
+                      </button>
+                    )
+                  ) : 
+                  (<button  
+                    className="button is-success is-small"
+                    title='Aprovado'
+                  >
+                    <FontAwesomeIcon icon={faCheckSquare} size="lg" />
+                  </button>)
+                  }
                 </td>
               </tr>
             );
