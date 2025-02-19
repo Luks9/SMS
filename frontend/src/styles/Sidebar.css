@@ -65,7 +65,26 @@
   font-size: 1rem;
 }
 
+.sidebar-footer {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  padding: 1rem;
+}
 
+.sidebar-footer .menu-list {
+  padding: 0;
+}
+
+.sidebar-footer .menu-list li {
+  margin-bottom: 0;
+}
+
+.sidebar-footer .button {
+  width: 100%;
+  text-align: left;
+  padding-left: 1rem;
+}
 
 .button.is-danger {
   margin: 14px;

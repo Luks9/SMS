@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import moment from 'moment';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faTrashCan, faCalculator, faSpinner, faClipboardQuestion, faClipboardCheck, faClipboardList, faCheckSquare } from '@fortawesome/free-solid-svg-icons';
+import { faTrashCan, faCalculator, faSpinner, faClipboardQuestion, 
+  faClipboardCheck, faClipboardList, faCheckSquare, faClock } from '@fortawesome/free-solid-svg-icons';
 import { AuthContext } from '../../context/AuthContext';
 import Pagination from './Pagination'; 
 import 'moment/locale/pt-br';
@@ -192,13 +193,22 @@ const EvaluationTable = ({ evaluations, refreshEvaluations }) => {
                         <FontAwesomeIcon icon={faClipboardList} size="lg" />
                       </button>
                     )
-                  ) : 
-                  (<button  
-                    className="button is-success is-small"
-                    title='Aprovado'
-                  >
-                    <FontAwesomeIcon icon={faCheckSquare} size="lg" />
-                  </button>)
+                  ) : (
+                    evaluation.status === 'COMPLETED' ? (
+                    <button  
+                      className="button is-success is-small"
+                      title='Aprovado'
+                    >
+                      <FontAwesomeIcon icon={faCheckSquare} size="lg" />
+                    </button>
+                    ) : 
+                    <button  
+                      className="button is-warning is-small is-light"
+                      title='Em Andamento'
+                    >
+                      <FontAwesomeIcon icon={faClock} size="lg" />
+                    </button>
+                  )
                   }
                 </td>
               </tr>

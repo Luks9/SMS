@@ -72,11 +72,17 @@ const Sidebar = () => {
             ))
           }
         </ul>
-
-        <button className="button is-danger" onClick={logout}>
-          <FontAwesomeIcon icon={faSignOutAlt} /> &nbsp; Logout
-        </button>
       </div>
+
+      <footer className="sidebar-footer">
+        <ul className="menu-list">
+          <li>
+            <button className="button is-danger is-small" onClick={logout}>
+              <FontAwesomeIcon icon={faSignOutAlt} /> &nbsp; Logout
+            </button>
+          </li>
+        </ul>
+      </footer>
     </aside>
   );
 };

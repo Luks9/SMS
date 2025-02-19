@@ -8,7 +8,6 @@ class Command(BaseCommand):
     
     def handle(self, *args, **kwargs):
         file_path = os.path.join(os.path.dirname(__file__), 'subcategories.csv')
-        print(f"Loading subcategories from: {file_path}")
 
         try:
             # Fetch the CategoryQuestion object with a fixed id of 1

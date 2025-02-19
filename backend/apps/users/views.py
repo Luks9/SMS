@@ -57,7 +57,6 @@ class CustomLoginView(APIView):
                     'company': company_data,
                 },
             }
-            print(response_data)
             #serializer = self.serializer_class(response_data)
             response = Response(response_data, status=status.HTTP_200_OK)
             response.set_cookie(

@@ -30,7 +30,6 @@ const ViewActionPlan = () => {
           headers: { Authorization: `Bearer ${token}` },
         });
         setActionPlan(response.data); // Salva o plano de ação no estado
-        console.log(response.data)
       } catch (error) {
         console.error('Erro ao buscar o plano de ação:', error);
       } finally {

@@ -18,7 +18,6 @@ import { ThemeProvider } from './context/ThemeContext';
 
 const App = () => {
   const companyId = localStorage.getItem("companyId");
-  console.log(companyId)
   return (
     <ThemeProvider>
       <Routes>

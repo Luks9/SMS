@@ -134,7 +134,6 @@ class Answer(models.Model):
             
             # Verifica se a data de validade "valid_until" já passou
         if self.evaluation.valid_until and self.evaluation.valid_until < timezone.now().date():
-            print(self.evaluation.valid_until)
             self.evaluation.status = 'COMPLETED'
 
         self.evaluation.save()

@@ -11,7 +11,7 @@ import useFetchCompanyQuestions from '../hooks/useFetchCompanyQuestions';  // Im
 
 const CompanyAnswer = () => {
   const { id } = useParams();  // Pega o ID da avaliação da URL
-  const { questions, loading, error, valid_until, fetchQuestions } = useFetchCompanyQuestions(id); // Usa o hook para buscar perguntas
+  const { questions, loading, error, fetchQuestions } = useFetchCompanyQuestions(id); // Usa o hook para buscar perguntas
   const { getToken } = useContext(AuthContext);  // Pega o token de autenticação do contexto
   const [selectedAnswers, setSelectedAnswers] = useState({});  // Armazena as respostas da empresa
   const [selectedFiles, setSelectedFiles] = useState({});  // Armazena os arquivos anexados
@@ -41,7 +41,6 @@ const CompanyAnswer = () => {
   useEffect(() => {
     if (!loading && !error && Object.keys(groupedQuestions).length > 0 && activeTab === '') {
       setActiveTab(Object.keys(groupedQuestions)[0]);
-      console.log(questions)
     }
   }, [loading, error, groupedQuestions, activeTab]);
 
@@ -100,7 +99,7 @@ const CompanyAnswer = () => {
   
       setMessage(answerId ? 'Resposta atualizada com sucesso!' : 'Resposta criada com sucesso!');
       setMessageType('success');
-      fetchQuestions();
+      window.location.reload()
   
       setSelectedAnswers((prev) => ({ ...prev, [questionId]: '' }));
       setSelectedFiles((prev) => ({ ...prev, [questionId]: null }));
@@ -239,10 +238,7 @@ const CompanyAnswer = () => {
                               <div className="select is-fullwidth">
                                 <select
                                   onChange={(e) => handleSelectChange(question.id, e.target.value)}
-                                  value={isEditing[question.id]
-                                    ? selectedAnswers[question.id] || answer.answer_respondent || ''
-                                    : ''
-                                  }
+                                  value={selectedAnswers[question.id] || answer.answer_respondent || ''}
                                 >
                                   <option value="" disabled>Selecione uma resposta</option>
                                   {Object.entries(ANSWER_CHOICES_MAP).map(([value, { label }]) => (

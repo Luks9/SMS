@@ -6,7 +6,7 @@ class EvaluationTestCase(TestCase):
     
     def setUp(self):
         # Criando um usuário
-        self.user = User.objects.create_user(username='testuser', password='12345')
+        self.user = User.objects.create_user(username='test user', password='12345')
         
         # Criando uma empresa
         self.company = Company.objects.create(name='Test Company', cnpj='00.000.000/0001-91', user=self.user)
