@@ -19,7 +19,6 @@ const useFetchEvaluationProgress = (id) => {
                 Authorization: `Bearer ${token}`,
                 },
             });
-            console.log(response.data)
             setProgress(response.data);
         } catch (error) {
             console.error('Erro ao buscar o progresso da avaliação:', error);

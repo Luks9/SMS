@@ -16,7 +16,6 @@ const EditQuestionModal = ({ question, isOpen, onClose, refreshQuestions, catego
           Authorization: `Bearer ${token}`,
         },
       });
-      console.log(response.data);
       setSubCategories(response.data);
     } catch (error) {
       console.error('Erro ao buscar categorias:', error);
@@ -46,7 +45,6 @@ const EditQuestionModal = ({ question, isOpen, onClose, refreshQuestions, catego
     e.preventDefault();
     try {
       const token = getToken();
-      console.log(formData);
       await axios.put(`/api/questions/${question.id}/`, formData, {
         headers: {
           Authorization: `Bearer ${token}`,

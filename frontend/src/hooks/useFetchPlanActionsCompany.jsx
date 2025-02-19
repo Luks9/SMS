@@ -19,7 +19,6 @@ const useFetchPlanActionsCompany = (companyId) => {
         },
       });
       if (response.data && response.data.length > 0) {
-        console.log(response.data)
         setActionsPlans(response.data);
       } else {
         setActionsPlans([]); // Caso não haja avaliações, retorna um array vazio

@@ -183,7 +183,7 @@ class EvaluationViewSet(viewsets.ModelViewSet):
 
         is_active = request.query_params.get('is_active', 'true').lower() == 'true'
         # Obter todas as avaliações da empresa
-        evaluations = Evaluation.objects.filter(company=company, is_active = is_active)
+        evaluations = Evaluation.objects.filter(company=company, is_active = is_active).order_by('-period')
 
         # Serializar as avaliações e retornar a resposta
         serializer = EvaluationSerializer(evaluations, many=True)
