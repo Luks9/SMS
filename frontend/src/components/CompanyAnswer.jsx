@@ -67,10 +67,9 @@ const CompanyAnswer = () => {
       const token = getToken();
       const formData = new FormData();
   
-      const selectedAnswer = selectedAnswers[questionId];
+      const selectedAnswer = selectedAnswers[questionId] !== undefined ? selectedAnswers[questionId] : questions.find(q => q.id === questionId).answer.answer_respondent;
       const selectedFile = selectedFiles[questionId];
       const company = localStorage.getItem('companyId');
-  
       formData.append('answer_respondent', selectedAnswer || '');
       formData.append('date_respondent', moment().format('YYYY-MM-DD'));
   
@@ -99,7 +98,7 @@ const CompanyAnswer = () => {
   
       setMessage(answerId ? 'Resposta atualizada com sucesso!' : 'Resposta criada com sucesso!');
       setMessageType('success');
-      window.location.reload()
+      fetchQuestions();
   
       setSelectedAnswers((prev) => ({ ...prev, [questionId]: '' }));
       setSelectedFiles((prev) => ({ ...prev, [questionId]: null }));
@@ -238,7 +237,7 @@ const CompanyAnswer = () => {
                               <div className="select is-fullwidth">
                                 <select
                                   onChange={(e) => handleSelectChange(question.id, e.target.value)}
-                                  value={selectedAnswers[question.id] || answer.answer_respondent || ''}
+                                  value={selectedAnswers[question.id] !== undefined ? selectedAnswers[question.id] : answer.answer_respondent || ''}
                                 >
                                   <option value="" disabled>Selecione uma resposta</option>
                                   {Object.entries(ANSWER_CHOICES_MAP).map(([value, { label }]) => (
