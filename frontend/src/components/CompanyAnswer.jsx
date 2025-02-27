@@ -6,7 +6,7 @@ import { useParams } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import Message from './Message';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faFileDownload, faEdit, faTimes } from '@fortawesome/free-solid-svg-icons';
+import { faFileDownload, faEdit, faTimes, faSpinner } from '@fortawesome/free-solid-svg-icons';
 import useFetchCompanyQuestions from '../hooks/useFetchCompanyQuestions';  // Importa o hook
 
 const CompanyAnswer = () => {
@@ -20,6 +20,7 @@ const CompanyAnswer = () => {
   const [messageType, setMessageType] = useState('success');
   const [activeTab, setActiveTab] = useState('');  // Aba ativa
   const [isEditing, setIsEditing] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);  // Estado de carregamento
 
   const ANSWER_CHOICES_MAP = {
     'NA': { label: 'Não Aplicável', color: 'is-light' },
@@ -63,6 +64,7 @@ const CompanyAnswer = () => {
   };
 
   const handleSubmit = async (questionId, answerId = null) => {
+    setIsSubmitting(true);  // Inicia o estado de carregamento
     try {
       const token = getToken();
       const formData = new FormData();
@@ -98,7 +100,7 @@ const CompanyAnswer = () => {
   
       setMessage(answerId ? 'Resposta atualizada com sucesso!' : 'Resposta criada com sucesso!');
       setMessageType('success');
-      fetchQuestions();
+      await fetchQuestions();  // Aguarda a conclusão do fetchQuestions
   
       setSelectedAnswers((prev) => ({ ...prev, [questionId]: '' }));
       setSelectedFiles((prev) => ({ ...prev, [questionId]: null }));
@@ -110,6 +112,8 @@ const CompanyAnswer = () => {
       console.error('Erro ao salvar a resposta:', error);
       setMessage('Erro ao salvar a resposta. Por favor, tente novamente.');
       setMessageType('danger');
+    } finally {
+      setIsSubmitting(false);  // Finaliza o estado de carregamento
     }
   };
 
@@ -201,7 +205,6 @@ const CompanyAnswer = () => {
                       </div>
                     </div>
 
-                    {/* Exibe a resposta junto com a nota da empresa */}
                     {isAnswerProvided && !isEditing[question.id] ? (
                       <div className="columns">
                         <div className="column is-one-third">
@@ -282,8 +285,13 @@ const CompanyAnswer = () => {
                       <button
                         className="button is-primary mt-2"
                         onClick={() => handleSubmit(question.id, answer.id)}
+                        disabled={isSubmitting}  // Desabilita o botão enquanto carrega
                       >
-                        Salvar Resposta
+                        {isSubmitting ? (
+                          <FontAwesomeIcon icon={faSpinner} spin />
+                        ) : (
+                          'Salvar Resposta'
+                        )}
                       </button>
                     )}
                   </div>
