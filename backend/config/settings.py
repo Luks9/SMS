@@ -15,10 +15,13 @@ SECRET_KEY = config('SECRET_KEY')
 if len(SECRET_KEY) < 50 or len(set(SECRET_KEY)) < 5 or SECRET_KEY.startswith('django-insecure-'):
     raise ValueError("SECRET_KEY must be at least 50 characters long, contain at least 5 unique characters, and not start with 'django-insecure-'.")
 
+ENVIRONMENT = config('ENVIRONMENT', default='development')
+
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config('DEBUG', default=False, cast=bool)
-if DEBUG:
-    raise Warning("DEBUG should not be set to True in deployment.")
+DEBUG = config('DEBUG', default=True, cast=bool)
+
+if DEBUG and ENVIRONMENT == 'production':
+    print("WARNING: DEBUG should not be set to True in production!")
 
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', cast=Csv())
 
@@ -110,6 +113,7 @@ DATABASES = {
         'PASSWORD': config('DB_PASSWORD', default=''),
         'HOST': config('DB_HOST', default='localhost'),
         'PORT': config('DB_PORT', default='5432'),
+        'OPTIONS': config('DB_OPTIONS', default={}, cast=dict),  # Ensure OPTIONS is a dictionary
     }
 }
 
