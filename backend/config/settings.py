@@ -12,9 +12,13 @@ MEDIA_URL = '/media/'
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config('SECRET_KEY')
+if len(SECRET_KEY) < 50 or len(set(SECRET_KEY)) < 5 or SECRET_KEY.startswith('django-insecure-'):
+    raise ValueError("SECRET_KEY must be at least 50 characters long, contain at least 5 unique characters, and not start with 'django-insecure-'.")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=False, cast=bool)
+if DEBUG:
+    raise Warning("DEBUG should not be set to True in deployment.")
 
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', cast=Csv())
 
@@ -41,8 +45,17 @@ SPECTACULAR_SETTINGS = {
         {'name': 'Formulários', 'description': 'Operações relacionadas a formulários'},
         {'name': 'Respostas', 'description': 'Operações relacionadas a respostas'},
     ],
-    
+    'ENUM_NAME_OVERRIDES': {
+        'AnswerEvaluatorEnum': 'CustomAnswerEvaluatorEnum',
+        'status': 'CustomStatusEnum',
+    },
 }
+
+# Security settings
+SECURE_HSTS_SECONDS = config('SECURE_HSTS_SECONDS', default=0, cast=int)  # Set to a positive value in production
+SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=False, cast=bool)
+SESSION_COOKIE_SECURE = config('SESSION_COOKIE_SECURE', default=False, cast=bool)
+CSRF_COOKIE_SECURE = config('CSRF_COOKIE_SECURE', default=False, cast=bool)
 
 # Application definition
 INSTALLED_APPS = [
