@@ -1,7 +1,7 @@
 from pathlib import Path
 from datetime import timedelta
 from decouple import config, Csv
-import os
+import os, json
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -54,8 +54,8 @@ SPECTACULAR_SETTINGS = {
         {'name': 'Respostas', 'description': 'Operações relacionadas a respostas'},
     ],
     'ENUM_NAME_OVERRIDES': {
-        'AnswerEvaluatorEnum': 'CustomAnswerEvaluatorEnum',
-        'status': 'CustomStatusEnum',
+        'apps.core.enums.AnswerEvaluatorEnum': 'CustomAnswerEvaluatorEnum',  # Ensure correct module path
+        'apps.core.enums.StatusEnum': 'CustomStatusEnum',  # Ensure correct module path
     },
 }
 
@@ -64,6 +64,9 @@ SECURE_HSTS_SECONDS = config('SECURE_HSTS_SECONDS', default=0, cast=int)  # Set 
 SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=False, cast=bool)
 SESSION_COOKIE_SECURE = config('SESSION_COOKIE_SECURE', default=False, cast=bool)
 CSRF_COOKIE_SECURE = config('CSRF_COOKIE_SECURE', default=False, cast=bool)
+
+SECURE_HSTS_INCLUDE_SUBDOMAINS = config('SECURE_HSTS_INCLUDE_SUBDOMAINS', default=False, cast=bool)
+SECURE_HSTS_PRELOAD = config('SECURE_HSTS_PRELOAD', default=False, cast=bool)
 
 # Application definition
 INSTALLED_APPS = [
@@ -117,8 +120,7 @@ DATABASES = {
         'USER': config('DB_USER', default=''),
         'PASSWORD': config('DB_PASSWORD', default=''),
         'HOST': config('DB_HOST', default='localhost'),
-        'PORT': config('DB_PORT', default='5432'),
-        'OPTIONS': config('DB_OPTIONS', default={}, cast=dict),  # Ensure OPTIONS is a dictionary
+        'OPTIONS': {'DRIVER' : config('DB_OPTIONS', default='')},
     }
 }
 
