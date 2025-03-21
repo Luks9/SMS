@@ -8,6 +8,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('token') || null);
   const [isLoading, setIsLoading] = useState(true); // Adiciona estado de carregamento
+  const [message, setMessage] = useState(null); // Estado para mensagens de status
 
   const navigate = useNavigate();
 
@@ -50,6 +51,8 @@ export const AuthProvider = ({ children }) => {
       setToken(accessToken);
       localStorage.setItem('user', JSON.stringify(loggedUser));
       localStorage.setItem('token', accessToken);
+
+      setMessage('Login realizado com sucesso!'); // Mensagem de sucesso
       
       // Verifica o tipo de usuário e salva no localStorage
       if (loggedUser.company === null) {
@@ -62,6 +65,7 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (error) {
       console.error('Login falhou', error);
+      setMessage('Falha no login. Verifique suas credenciais.'); // Mensagem de erro
     }
   };
 
@@ -79,7 +83,7 @@ export const AuthProvider = ({ children }) => {
   const getToken = () => token;
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, getToken, isLoading }}>
+    <AuthContext.Provider value={{ user, login, logout, getToken, isLoading, message, setMessage }}>
       {children}
     </AuthContext.Provider>
   );

@@ -6,6 +6,8 @@ import useFetchEvaluations from '../hooks/useFetchEvaluations';
 import Layout from '../components/Layout';
 import SendEvaluationForm from '../components/SendEvaluationForm';
 import EvaluationTable from '../components/tables/EvaluationTable';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faSpinner } from '@fortawesome/free-solid-svg-icons'; // Importa o ícone de carregamento
 
 const EnvioAvaliacoes = () => {
   const { forms } = useFetchForms();
@@ -40,11 +42,18 @@ const EnvioAvaliacoes = () => {
               <p className="card-header-title">Gerenciar Avaliação</p>
             </header>
             <div className="card-content">
-              <EvaluationTable 
-                evaluations={evaluations} 
-                loading={loading} 
-                refreshEvaluations={fetchEvaluations} 
-              />
+              {loading ? (
+                <div style={{ textAlign: 'center', marginTop: '20px' }}>
+                  <FontAwesomeIcon icon={faSpinner} spin size="2x" />
+                  <p>Carregando avaliações...</p>
+                </div>
+              ) : (
+                <EvaluationTable 
+                  evaluations={evaluations} 
+                  loading={loading} 
+                  refreshEvaluations={fetchEvaluations} 
+                />
+              )}
             </div>
           </div>
         </div>

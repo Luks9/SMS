@@ -1,11 +1,12 @@
 import React, { useState, useContext } from 'react';
-import {AuthContext}  from '../context/AuthContext';
+import { AuthContext } from '../context/AuthContext';
+import Message from '../components/Message'; // Importa o componente Message
 import '../styles/Login.css';
 
 const Login = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const { login } = useContext(AuthContext);
+  const { login, message, setMessage } = useContext(AuthContext);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -16,8 +17,15 @@ const Login = () => {
     <div className="login-container">
       <div className="login-columns">
         <div className="login-column">
+          {message && (
+            <Message
+              message={message}
+              type={message.includes('sucesso') ? 'success' : 'danger'}
+              onClose={() => setMessage(null)}
+            />
+          )}
           <form onSubmit={handleSubmit} className="box">
-            <h1 className="login-title">SMS</h1>
+            <h1 className="login-title">SMS AVALIA</h1>
             <div className="login-field">
               <label className="login-label">Username</label>
               <div className="control">
