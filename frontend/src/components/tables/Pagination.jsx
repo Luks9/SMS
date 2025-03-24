@@ -36,7 +36,7 @@ const Pagination = ({ totalItems, itemsPerPage, currentPage, onPageChange }) => 
   };
 
   return (
-    <div className="pagination">
+    <div className="pagination is-centered">
       <button
         className="button"
         onClick={handlePreviousPage}
