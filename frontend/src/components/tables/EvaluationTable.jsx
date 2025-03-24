@@ -17,7 +17,7 @@ const EvaluationTable = ({ evaluations, refreshEvaluations }) => {
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
   const [loadingCalculation, setLoadingCalculation] = useState(null);
-  const itemsPerPage = 5;
+  const itemsPerPage = 10;
 
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
