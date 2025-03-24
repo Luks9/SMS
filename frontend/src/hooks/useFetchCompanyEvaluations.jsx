@@ -9,6 +9,7 @@ const useFetchCompanyEvaluations = (companyId, is_active) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  console.log(is_active);
   // Função para validar o companyId
   const isValidCompanyId = (companyId) => {
     return companyId && !isNaN(companyId) && Number(companyId) > 0; // Valida que é um número positivo
@@ -16,7 +17,7 @@ const useFetchCompanyEvaluations = (companyId, is_active) => {
 
   // Função para validar o parâmetro is_active
   const isValidIsActive = (is_active) => {
-    return is_active === 'true' || is_active === 'false'; // Verifica se é uma string booleana
+    return is_active === 'true' || is_active === 'false' || is_active === true || is_active === false;
   };
 
   // Função para buscar as avaliações por empresa
@@ -28,6 +29,7 @@ const useFetchCompanyEvaluations = (companyId, is_active) => {
       }
 
       if (!isValidIsActive(is_active)) {
+        console.log(is_active);
         throw new Error('Valor de "is_active" inválido');
       }
 
