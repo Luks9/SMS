@@ -141,6 +141,11 @@ class AnswerSerializer(serializers.ModelSerializer):
     def validate(self, data):
         # Avaliação associada à resposta
         evaluation = data.get('evaluation', self.instance.evaluation if self.instance else None)
+        request = self.context.get('request')
+
+        # Verifica se o usuário é administrador
+        if request and request.user and request.user.is_superuser:
+            return data  # Permite salvar sem validar a data
 
         if evaluation and evaluation.valid_until and evaluation.valid_until < timezone.now().date():
             raise serializers.ValidationError("A data limite para responder esta avaliação já expirou.")
