@@ -20,7 +20,6 @@ from .serializers import (
     EvaluationProgressSerializer,
     ActionPlanSerializer,
     ScoreResponseSerializer,
-    
 )
 
 

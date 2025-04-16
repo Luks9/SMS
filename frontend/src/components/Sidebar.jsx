@@ -44,7 +44,9 @@ const Sidebar = () => {
       icon: faPaperPlane,
       allowed: ['empresa'],
     },
-    // {
+    
+    
+    // {/rem-form
     //   to: '/settings',
     //   label: 'Configurações',
     //   icon: faCog,
