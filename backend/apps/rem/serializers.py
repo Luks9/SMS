@@ -11,6 +11,6 @@ class RemSerializer(serializers.ModelSerializer):
             'acidentes_sem_afastamento', 'acidentes_com_afastamento_tipicos', 'acidentes_transito',
             'taxa_com_afastamento', 'taxa_sem_afastamento', 'acidentados_registraveis', 'company',
             'company_name', 'gravidade', 'dias_perdidos_debitados', 'fatalidades', 'incidencia',
-            'lma_nca', 'lma_tfca', 'outros', 'primeiros_socorros', 'total_acidentes_registraveis',
+            'lma_nca', 'lma_tfca', 'outros', 'primeiros_socorros', 'total_incidentes_registraveis',
             'trabalho_restrito', 'tratamento_medico'
         ]
