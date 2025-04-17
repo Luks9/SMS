@@ -1,5 +1,8 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { AdminRoute, EmpresaRoute, PrivateRoute } from './components/PrivateRoute';
+import { ThemeProvider } from './context/ThemeContext';
+// Páginas
 import Login from './pages/Login';
 import AdminDashboard from './pages/AdminDashboard';
 import EmpresaDashboard from './pages/EmpresaDashboard';
@@ -8,16 +11,18 @@ import EnvioAvaliacoes from './pages/EnvioAvaliacoes';
 import EvaluationDetails from './pages/EvaluationDetails';
 import EvaluationCompany from './pages/EvaluationCompany';
 import ActionPlanCompany from './pages/ActionPlanCompany';
+// Componentes de Planos de Ação
 import ActionPlanAnswerForm from './components/action_plan/ActionPlanAnswerForm';
 import ActionPlanView from './components/action_plan/ActionPlanView';
-import CompanyAnswer from './components/CompanyAnswer';
 import ViewActionPlan from './components/action_plan/ViewActionPlan';
 import CreateActionPlan from './components/action_plan/CreateActionPlan';
-import { AdminRoute, EmpresaRoute, PrivateRoute } from './components/PrivateRoute';
-import { ThemeProvider } from './context/ThemeContext';
+// Outros Componentes
+import CompanyAnswer from './components/CompanyAnswer';
+import RemForm from './pages/rem/RemForm';
 
 const App = () => {
   const companyId = localStorage.getItem("companyId");
+
   return (
     <ThemeProvider>
       <Routes>
@@ -123,6 +128,15 @@ const App = () => {
             </EmpresaRoute>
           }
         />
+        <Route
+          path="/rem-form"
+          element={
+            <EmpresaRoute>
+              <RemForm companyId={companyId} />
+            </EmpresaRoute>
+          }
+        />
+
         {/* Rota padrão - Redirecionamento baseado na autenticação */}
         <Route
           path="/"
