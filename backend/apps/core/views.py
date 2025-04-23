@@ -94,26 +94,16 @@ class EvaluationViewSet(viewsets.ModelViewSet):
         answers = evaluation.answers.all()
 
         total_score = 100  # Pontuação acumulada
-        total_weight = 0  # Soma dos pesos das categorias
 
         for answer in answers:
             category_weight = answer.question.category.weight  # Peso da categoria da pergunta
-
-            # Apenas incrementamos o peso total para perguntas que não sejam "NA"
-            # total_weight += category_weight
-
             # Verifica se a resposta é "Certo" ou "Errado"
             if answer.answer_evaluator in ['NC']:
                 # Se a resposta for considerada "Certo", somamos o peso da categoria à pontuação
                 total_score -= category_weight
-
         # Verifica se o total_weight é maior que zero para evitar divisão por zero
-        if total_weight > 0:
-            # Calcula a porcentagem da pontuação final
-            #final_score = (total_score / total_weight) * 100
-            final_score = total_score
-        else:
-            final_score = 0  # Caso não haja respostas válidas
+       
+        final_score = total_score
 
         evaluation.score = final_score
         evaluation.save()
@@ -122,7 +112,6 @@ class EvaluationViewSet(viewsets.ModelViewSet):
         return Response({
             'evaluation_id': evaluation.id,
             'total_score': final_score,
-            'total_weight': total_weight,
             'message': 'Score atualizado com sucesso.'
         }, status=status.HTTP_200_OK)
     
