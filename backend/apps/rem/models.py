@@ -1,3 +1,4 @@
+#backend/apps/rem/models.py
 from django.db import models
 from apps.core.models import Company  # Importa o modelo Company para a chave estrangeira
 
@@ -30,16 +31,10 @@ class Rem(models.Model):
     taxa_sem_afastamento = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True)
     incidencia = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True)
     gravidade = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True)
-    
 
 
     lma_nca = models.IntegerField(null=True, blank=True)
     lma_tfca = models.IntegerField(null=True, blank=True)
-    
-    
-    
-    
-    
     
 
     company = models.ForeignKey(Company, on_delete=models.PROTECT, related_name='rems')
@@ -53,3 +48,35 @@ class Rem(models.Model):
 
     def __str__(self):
         return f"REM - {self.company.name} ({self.periodo})"
+    
+
+class DieselConsumido(models.Model):
+    periodo = models.DateField()
+    diesel_consumido = models.IntegerField(default=0, null=True, blank=True)
+    company = models.ForeignKey(Company, on_delete=models.PROTECT, related_name='diesel_consumidos')
+
+    class Meta:
+        verbose_name = "Diesel Consumido"
+        verbose_name_plural = "Diesel Consumidos"
+        constraints = [
+            models.UniqueConstraint(fields=['company', 'periodo'], name='unique_diesel_consumido_per_company_periodo')
+        ]
+
+    def __str__(self):
+        return f"Diesel Consumido - {self.company.name} ({self.periodo})"
+    
+    
+class FuncionariosDemitidos(models.Model):
+    periodo = models.DateField()
+    funcionarios_demitidos = models.IntegerField(default=0, null=True, blank=True)
+    company = models.ForeignKey(Company, on_delete=models.PROTECT, related_name='funcionarios_demitidos')
+
+    class Meta:
+        verbose_name = "Funcionarios Demitidos"
+        verbose_name_plural = "Funcionarios Demitidos"
+        constraints = [
+            models.UniqueConstraint(fields=['company', 'periodo'], name='unique_funcionarios_demitidos_per_company_periodo')
+        ]
+
+    def __str__(self):
+        return f"Funcionarios Demitidos - {self.company.name} ({self.periodo})"

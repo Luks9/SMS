@@ -18,6 +18,7 @@ import ViewActionPlan from './components/action_plan/ViewActionPlan';
 import CreateActionPlan from './components/action_plan/CreateActionPlan';
 // Outros Componentes
 import CompanyAnswer from './components/CompanyAnswer';
+import RemCompany from './pages/rem/RemCompany';
 import RemForm from './pages/rem/RemForm';
 
 const App = () => {
@@ -129,14 +130,29 @@ const App = () => {
           }
         />
         <Route
-          path="/rem-form"
+          path="/rem-empresa"
+          element={
+            <EmpresaRoute>
+              <RemCompany companyId={companyId} />
+            </EmpresaRoute>
+          }
+        />
+        <Route
+          path="/rem-empresa/novo"
           element={
             <EmpresaRoute>
               <RemForm companyId={companyId} />
             </EmpresaRoute>
           }
         />
-
+        <Route
+          path="/rem-empresa/edite"
+          element={
+            <EmpresaRoute>
+              <RemForm companyId={companyId} />
+            </EmpresaRoute>
+          }
+        />
         {/* Rota padrão - Redirecionamento baseado na autenticação */}
         <Route
           path="/"

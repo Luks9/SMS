@@ -1,7 +1,7 @@
 import React, { useContext } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faTachometerAlt, faFileAlt, faCog, faSignOutAlt, faPaperPlane, faFileContract } from '@fortawesome/free-solid-svg-icons';
+import { faTachometerAlt, faFileAlt, faNotesMedical, faSignOutAlt, faPaperPlane, faFileContract } from '@fortawesome/free-solid-svg-icons';
 import '../styles/Sidebar.css';
 import { AuthContext } from '../context/AuthContext';
 
@@ -42,6 +42,12 @@ const Sidebar = () => {
       to: '/empresa-plano-acao',
       label: 'Planos de Ação',
       icon: faPaperPlane,
+      allowed: ['empresa'],
+    },
+    {
+      to: '/rem-empresa',
+      label: 'REM',
+      icon: faNotesMedical,
       allowed: ['empresa'],
     },
     

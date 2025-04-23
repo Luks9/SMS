@@ -14,6 +14,7 @@ const Message = ({ message, type, onClose }) => {
 
   return (
     <div className={`notification is-${type}`}>
+      {message}
       <button className="delete" onClick={onClose}></button>
     </div>
   );
