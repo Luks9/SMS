@@ -33,11 +33,15 @@ const RemAvaliador = () => {
 
   return (
     <Layout>
-      <h1 className="title">Avaliação de REMs</h1>
-      <RemCharts data={data} />
-      <div className="columns">
-        <RemTabelaAvaliador data={data} loading={loading} />
-      </div>
+      <section className="section">
+        <div className="container">
+          <h1 className="title has-text-centered mb-5">Avaliação de REMs</h1>
+          <RemCharts data={data} />
+          <div className="mt-6">
+            <RemTabelaAvaliador data={data} loading={loading} />
+          </div>
+        </div>
+      </section>
     </Layout>
   );
 };
