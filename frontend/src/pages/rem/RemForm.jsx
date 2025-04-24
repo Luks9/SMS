@@ -1,16 +1,24 @@
-import axios from 'axios';
 import React, { useState, useEffect } from 'react';
 import { useContext } from 'react';
 import { AuthContext } from '../../context/AuthContext';
 import Layout from '../../components/Layout';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Message from '../../components/Message';
+import axios from 'axios';
 
 const RemForm = ({ companyId }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { getToken } = useContext(AuthContext);
   const token = getToken();
+
+  const [isLoading, setIsLoading] = useState(true); // Estado para monitorar o carregamento
+
+  useEffect(() => {
+    if (companyId) {
+      setIsLoading(false); // Define como carregado quando o companyId está disponível
+    }
+  }, [companyId]);
 
   // Determina se está no modo de edição
   const initialData = location.state?.initialData || {};
@@ -194,8 +202,8 @@ const RemForm = ({ companyId }) => {
     navigate('/rem-empresa/');
   };
 
-  // Render logic for loading state
-  if (!companyId) {
+  // Render lógica para estado de carregamento
+  if (isLoading) {
     return <p>Carregando...</p>;
   }
 
