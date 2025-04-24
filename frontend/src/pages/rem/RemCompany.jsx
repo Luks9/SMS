@@ -69,7 +69,9 @@ const RemCompany = ({ companyId }) => {
           }
       };
 
-      fetchData();
+      if (companyId) {
+          fetchData();
+      }
   }, [companyId, getToken]);
 
 

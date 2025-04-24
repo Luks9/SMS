@@ -137,7 +137,6 @@ const RemForm = ({ companyId }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     // Validação básica
     if (!formData.periodo) {
       alert('O campo Período é obrigatório.');
@@ -194,6 +193,11 @@ const RemForm = ({ companyId }) => {
   const handleCancel = () => {
     navigate('/rem-empresa/');
   };
+
+  // Render logic for loading state
+  if (!companyId) {
+    return <p>Carregando...</p>;
+  }
 
   return (
     <Layout>

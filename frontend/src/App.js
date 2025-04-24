@@ -20,6 +20,7 @@ import CreateActionPlan from './components/action_plan/CreateActionPlan';
 import CompanyAnswer from './components/CompanyAnswer';
 import RemCompany from './pages/rem/RemCompany';
 import RemForm from './pages/rem/RemForm';
+import RemAvaliador from './pages/rem/RemAvaliador';
 
 const App = () => {
   const companyId = localStorage.getItem("companyId");
@@ -76,6 +77,14 @@ const App = () => {
           element={
             <AdminRoute>
               <EvaluationDetails />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/rem-avaliador"
+          element={
+            <AdminRoute>
+              <RemAvaliador />
             </AdminRoute>
           }
         />

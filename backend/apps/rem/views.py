@@ -52,6 +52,34 @@ class RemViewSet(viewsets.ModelViewSet):
         serializer.save(company=company)
 
     @extend_schema(
+        description="Retorna os dados combinados de REM, Diesel Consumido e Funcionários Demitidos para todas as empresas.",
+        responses={200: "Dados combinados retornados com sucesso."}
+    )
+    @action(detail=False, methods=['get'], url_path='combined-data')
+    def combined_data_for_all_companies(self, request):
+        """
+        Endpoint para retornar todos os dados combinados de REM, Diesel Consumido e Funcionários Demitidos para todas as empresas.
+        """
+        # Obtém todos os dados de REM, Diesel Consumido e Funcionários Demitidos
+        rems = Rem.objects.all()
+        diesel_consumidos = DieselConsumido.objects.all()
+        funcionarios_demitidos = FuncionariosDemitidos.objects.all()
+
+        # Combina os dados
+        combined_data = []
+        for rem in rems:
+            # Buscando Diesel Consumido e Funcionários Demitidos com o mesmo periodo
+            diesel = diesel_consumidos.filter(periodo=rem.periodo, company=rem.company).first()
+            demitidos = funcionarios_demitidos.filter(periodo=rem.periodo, company=rem.company).first()
+
+            combined_data.append({
+                "rem": RemSerializer(rem).data,
+                "consumo_diesel": diesel.diesel_consumido if diesel else 0,
+                "funcionarios_demitidos": demitidos.funcionarios_demitidos if demitidos else 0,
+            })
+        return Response(combined_data, status=HTTP_200_OK)
+
+    @extend_schema(
         description="Cria um REM e distribui os dados adicionais para as tabelas DieselConsumido e FuncionariosDemitidos.",
         responses={201: "REM e dados adicionais criados com sucesso.", 400: "Erro de validação."}
     )
@@ -199,7 +227,7 @@ class RemViewSet(viewsets.ModelViewSet):
         responses={200: "Dados combinados retornados com sucesso.", 404: "Empresa não encontrada."}
     )
     @action(detail=False, methods=['get'], url_path='combined-data/(?P<company_id>[^/.]+)')
-    def combined_data(self, request, company_id=None):
+    def combined_data_for_company(self, request, company_id=None):
         """
         Endpoint para retornar os dados combinados de REM, Diesel Consumido e Funcionários Demitidos para uma empresa.
         """
