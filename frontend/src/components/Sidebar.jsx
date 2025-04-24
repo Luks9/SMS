@@ -50,6 +50,12 @@ const Sidebar = () => {
       icon: faNotesMedical,
       allowed: ['empresa'],
     },
+    {
+      to: '/rem-avaliador',
+      label: 'REM Avaliador',
+      icon: faNotesMedical,
+      allowed: ['admin'],
+    },
     
     
     // {/rem-form
