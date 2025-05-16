@@ -1,22 +1,24 @@
-import React from 'react';
+// src/components/tables/Pagination.jsx
 
-const Pagination = ({ totalItems, itemsPerPage, currentPage, onPageChange }) => {
+const Pagination = ({ totalItems, itemsPerPage, currentPage, onPageChange, disabled }) => {
   const totalPages = Math.ceil(totalItems / itemsPerPage);
 
   const handlePreviousPage = () => {
-    if (currentPage > 1) {
+    if (currentPage > 1 && !disabled) {
       onPageChange(currentPage - 1);
     }
   };
 
   const handleNextPage = () => {
-    if (currentPage < totalPages) {
+    if (currentPage < totalPages && !disabled) {
       onPageChange(currentPage + 1);
     }
   };
 
   const handlePageClick = (page) => {
-    onPageChange(page);
+    if (!disabled) {
+      onPageChange(page);
+    }
   };
 
   const renderPageNumbers = () => {
@@ -27,6 +29,7 @@ const Pagination = ({ totalItems, itemsPerPage, currentPage, onPageChange }) => 
           key={i}
           className={`button ${i === currentPage ? 'is-primary' : ''}`}
           onClick={() => handlePageClick(i)}
+          disabled={disabled}
         >
           {i}
         </button>
@@ -40,7 +43,7 @@ const Pagination = ({ totalItems, itemsPerPage, currentPage, onPageChange }) => 
       <button
         className="button"
         onClick={handlePreviousPage}
-        disabled={currentPage === 1}
+        disabled={currentPage === 1 || disabled}
       >
         Anterior
       </button>
@@ -48,7 +51,7 @@ const Pagination = ({ totalItems, itemsPerPage, currentPage, onPageChange }) => 
       <button
         className="button"
         onClick={handleNextPage}
-        disabled={currentPage === totalPages}
+        disabled={currentPage === totalPages || disabled}
       >
         Próxima
       </button>
