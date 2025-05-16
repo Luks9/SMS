@@ -1,10 +1,20 @@
-import React, { useState, useContext } from 'react';
+// src/components/tables/EvaluationTable.jsx
+
+import { useContext, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import moment from 'moment';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faTrashCan, faCalculator, faSpinner, faClipboardQuestion, 
-  faClipboardCheck, faClipboardList, faCheckSquare, faClock } from '@fortawesome/free-solid-svg-icons';
+import { 
+  faTrashCan, 
+  faCalculator, 
+  faSpinner, 
+  faClipboardQuestion, 
+  faClipboardCheck, 
+  faClipboardList, 
+  faCheckSquare, 
+  faClock 
+} from '@fortawesome/free-solid-svg-icons';
 import { AuthContext } from '../../context/AuthContext';
 import Pagination from './Pagination'; 
 import 'moment/locale/pt-br';
@@ -12,16 +22,11 @@ import { STATUS_CHOICES } from '../../utils/StatusChoices';
 
 moment.locale('pt-br');
 
-const EvaluationTable = ({ evaluations, refreshEvaluations }) => {
+const EvaluationTable = ({ evaluations, refreshEvaluations, count, currentPage, fetchEvaluations, paginationLoading }) => {
   const { getToken } = useContext(AuthContext);
   const navigate = useNavigate();
-  const [currentPage, setCurrentPage] = useState(1);
   const [loadingCalculation, setLoadingCalculation] = useState(null);
   const itemsPerPage = 10;
-
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = evaluations.slice(indexOfFirstItem, indexOfLastItem);
 
   const calculate = async (evaluationId) => {
     setLoadingCalculation(evaluationId);
@@ -33,7 +38,7 @@ const EvaluationTable = ({ evaluations, refreshEvaluations }) => {
         },
       });
       alert('Nota calculada');
-      refreshEvaluations();
+      refreshEvaluations(currentPage);
     } catch (error) {
       console.error('Erro ao calcular a avaliação:', error);
     } finally {
@@ -52,7 +57,7 @@ const EvaluationTable = ({ evaluations, refreshEvaluations }) => {
             Authorization: `Bearer ${token}`,
           },
         });
-        refreshEvaluations();
+        refreshEvaluations(currentPage);
       } catch (error) {
         console.error('Erro ao excluir a avaliação:', error);
       }
@@ -73,11 +78,11 @@ const EvaluationTable = ({ evaluations, refreshEvaluations }) => {
 
   const getScoreLabel = (score) => {
     if (score >= 85) {
-      return 'is-success';  // Verde
+      return 'is-success';
     } else if (score >= 80) {
-      return 'is-warning';  // Amarelo
+      return 'is-warning';
     } else {
-      return 'is-danger';   // Vermelho
+      return 'is-danger';
     }
   };
 
@@ -93,12 +98,33 @@ const EvaluationTable = ({ evaluations, refreshEvaluations }) => {
     navigate(path);
   };
 
-  if (evaluations.length === 0) {
+  if (evaluations.length === 0 && !paginationLoading) {
     return <p>Nenhuma avaliação encontrada.</p>;
   }
 
   return (
-    <>
+    <div style={{ position: 'relative' }}>
+      {/* Indicador de carregamento durante a troca de páginas */}
+      {paginationLoading && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(255, 255, 255, 0.8)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 10,
+          }}
+        >
+          <FontAwesomeIcon icon={faSpinner} spin size="2x" />
+          <span style={{ marginLeft: '10px' }}>Carregando...</span>
+        </div>
+      )}
+
       <table className="table is-fullwidth is-striped is-hoverable">
         <thead>
           <tr>
@@ -113,7 +139,7 @@ const EvaluationTable = ({ evaluations, refreshEvaluations }) => {
           </tr>
         </thead>
         <tbody>
-          {currentItems.map((evaluation) => {
+          {evaluations.map((evaluation) => {
             const progressPercentage = calculateProgressPercentage(evaluation);
             const progressBarColor = getProgressBarColor(progressPercentage);
 
@@ -146,7 +172,8 @@ const EvaluationTable = ({ evaluations, refreshEvaluations }) => {
                   <button
                     className="button is-light is-small"
                     onClick={() => handleDelete(evaluation.id)}
-                    title='Excluir avaliação'
+                    title="Excluir avaliação"
+                    disabled={paginationLoading} // Desativa durante o carregamento
                   >
                     <FontAwesomeIcon icon={faTrashCan} size="lg" color="red" />
                   </button>
@@ -155,8 +182,8 @@ const EvaluationTable = ({ evaluations, refreshEvaluations }) => {
                   <button
                     className="button is-light is-small"
                     onClick={() => calculate(evaluation.id)}
-                    disabled={loadingCalculation === evaluation.id}
-                    title='Calcular nota'
+                    disabled={loadingCalculation === evaluation.id || paginationLoading}
+                    title="Calcular nota"
                   >
                     {loadingCalculation === evaluation.id ? (
                       <FontAwesomeIcon icon={faSpinner} spin size="lg" />
@@ -166,10 +193,11 @@ const EvaluationTable = ({ evaluations, refreshEvaluations }) => {
                   </button>
                 </td>
                 <td className="px-0">
-                  <button 
-                    onClick={() => redirectTo(`/evaluation/${evaluation.id}/details`)} 
+                  <button
+                    onClick={() => redirectTo(`/evaluation/${evaluation.id}/details`)}
                     className="button is-info is-light is-small"
-                    title='Respostas'
+                    title="Respostas"
+                    disabled={paginationLoading}
                   >
                     <FontAwesomeIcon icon={faClipboardQuestion} size="lg" />
                   </button>
@@ -177,39 +205,41 @@ const EvaluationTable = ({ evaluations, refreshEvaluations }) => {
                 <td className="px-0">
                   {shouldShowActionPlan(evaluation) ? (
                     evaluation.action_plan ? (
-                      <button 
-                        onClick={() => redirectTo(`/action-plan/${evaluation.action_plan}/view`)} 
+                      <button
+                        onClick={() => redirectTo(`/action-plan/${evaluation.action_plan}/view`)}
                         className="button is-info is-light is-small"
-                        title='Plano de Ação'
+                        title="Plano de Ação"
+                        disabled={paginationLoading}
                       >
                         <FontAwesomeIcon icon={faClipboardCheck} size="lg" />
                       </button>
                     ) : (
-                      <button 
-                        onClick={() => redirectTo(`/action-plan/${evaluation.id}/create`)} 
+                      <button
+                        onClick={() => redirectTo(`/action-plan/${evaluation.id}/create`)}
                         className="button is-warning is-light is-small"
-                        title='Criar Plano de Ação'
+                        title="Criar Plano de Ação"
+                        disabled={paginationLoading}
                       >
                         <FontAwesomeIcon icon={faClipboardList} size="lg" />
                       </button>
                     )
-                  ) : (
-                    evaluation.status === 'COMPLETED' ? (
-                    <button  
+                  ) : evaluation.status === 'COMPLETED' ? (
+                    <button
                       className="button is-success is-small"
-                      title='Aprovado'
+                      title="Aprovado"
+                      disabled={paginationLoading}
                     >
                       <FontAwesomeIcon icon={faCheckSquare} size="lg" />
                     </button>
-                    ) : 
-                    <button  
+                  ) : (
+                    <button
                       className="button is-warning is-small is-light"
-                      title='Em Andamento'
+                      title="Em Andamento"
+                      disabled={paginationLoading}
                     >
                       <FontAwesomeIcon icon={faClock} size="lg" />
                     </button>
-                  )
-                  }
+                  )}
                 </td>
               </tr>
             );
@@ -218,12 +248,13 @@ const EvaluationTable = ({ evaluations, refreshEvaluations }) => {
       </table>
 
       <Pagination
-        totalItems={evaluations.length}
+        totalItems={count}
         itemsPerPage={itemsPerPage}
         currentPage={currentPage}
-        onPageChange={setCurrentPage}
+        onPageChange={(page) => fetchEvaluations(page)}
+        disabled={paginationLoading} // Passa o estado de carregamento para a paginação
       />
-    </>
+    </div>
   );
 };
 

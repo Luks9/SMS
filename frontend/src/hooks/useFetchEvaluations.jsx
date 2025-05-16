@@ -1,3 +1,5 @@
+// src/hooks/useFetchEvaluations.jsx
+
 import { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
@@ -6,14 +8,17 @@ const useFetchEvaluations = () => {
   const { getToken } = useContext(AuthContext);
 
   const [evaluations, setEvaluations] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [count, setCount] = useState(0);
+  const [next, setNext] = useState(null);
+  const [previous, setPrevious] = useState(null);
+  const [loading, setLoading] = useState(true); // Carregamento inicial
+  const [paginationLoading, setPaginationLoading] = useState(false); // Carregamento da paginação
   const [error, setError] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
-  // Função para buscar as avaliações
-  const fetchEvaluations = async () => {
+  const fetchEvaluations = async (page = 1) => {
     const token = getToken();
 
-    // Verifica se o token é válido
     if (!token) {
       setError('Token de autenticação não disponível');
       setLoading(false);
@@ -21,15 +26,19 @@ const useFetchEvaluations = () => {
     }
 
     try {
-      const response = await axios.get('/api/evaluation/?is_active=true', {
+      setPaginationLoading(true); // Inicia o carregamento da paginação
+      const response = await axios.get(`/api/evaluation/?is_active=true&page=${page}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
-      
-      // Verifica se a resposta contém avaliações
-      if (response.data) {
-        setEvaluations(response.data);
+
+      if (response.data.results) {
+        setEvaluations(response.data.results);
+        setCount(response.data.count);
+        setNext(response.data.next);
+        setPrevious(response.data.previous);
+        setCurrentPage(page);
       } else {
         setError('Nenhuma avaliação encontrada.');
       }
@@ -37,17 +46,30 @@ const useFetchEvaluations = () => {
       console.error('Erro ao buscar avaliações:', err);
       setError('Erro ao buscar avaliações. Tente novamente mais tarde.');
     } finally {
-      setLoading(false);
+      setPaginationLoading(false); // Finaliza o carregamento da paginação
+      if (page === 1) {
+        setLoading(false); // Finaliza o carregamento inicial apenas na primeira página
+      }
     }
   };
 
   useEffect(() => {
     setLoading(true);
-    setError(null);  // Limpa o erro antes de tentar buscar novamente
+    setError(null);
     fetchEvaluations();
-  }, [getToken]); // Executa a requisição quando o token mudar
+  }, [getToken]);
 
-  return { evaluations, loading, error, fetchEvaluations };
+  return { 
+    evaluations, 
+    count, 
+    next, 
+    previous, 
+    currentPage, 
+    loading, 
+    paginationLoading, // Expor o estado de carregamento da paginação
+    error, 
+    fetchEvaluations 
+  };
 };
 
 export default useFetchEvaluations;

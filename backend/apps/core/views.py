@@ -21,7 +21,12 @@ from .serializers import (
     ActionPlanSerializer,
     ScoreResponseSerializer,
 )
+from rest_framework.pagination import PageNumberPagination
 
+class StandardResultsSetPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
 
 @extend_schema(tags=['Empresas'])
@@ -74,6 +79,7 @@ class FormViewSet(viewsets.ModelViewSet):
 class EvaluationViewSet(viewsets.ModelViewSet):
     queryset = Evaluation.objects.all()
     serializer_class = EvaluationSerializer
+    pagination_class = StandardResultsSetPagination
 
     @extend_schema(
         responses=ScoreResponseSerializer

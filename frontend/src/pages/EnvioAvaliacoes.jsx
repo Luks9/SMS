@@ -1,5 +1,5 @@
-//frontend/src/pages/EnvioAvaliacoes.jsx
-import React from 'react';
+// src/pages/EnvioAvaliacoes.jsx
+
 import useFetchForms from '../hooks/useFetchForms';
 import useFetchCompany from '../hooks/useFetchCompany';
 import useFetchEvaluations from '../hooks/useFetchEvaluations';
@@ -7,13 +7,13 @@ import Layout from '../components/Layout';
 import SendEvaluationForm from '../components/SendEvaluationForm';
 import EvaluationTable from '../components/tables/EvaluationTable';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faSpinner } from '@fortawesome/free-solid-svg-icons'; // Importa o ícone de carregamento
+import { faSpinner } from '@fortawesome/free-solid-svg-icons';
 
 const EnvioAvaliacoes = () => {
   const { forms } = useFetchForms();
   const { companies } = useFetchCompany();
-  const { evaluations, loading, fetchEvaluations } = useFetchEvaluations();
-  
+  const { evaluations, count, currentPage, loading, paginationLoading, fetchEvaluations } = useFetchEvaluations();
+
   return (
     <Layout>
       <h1 className="title">Avaliações</h1>
@@ -28,7 +28,7 @@ const EnvioAvaliacoes = () => {
               <SendEvaluationForm 
                 forms={forms} 
                 companies={companies} 
-                onEvaluationSent={fetchEvaluations} 
+                onEvaluationSent={() => fetchEvaluations(currentPage)} 
               />
             </div>
           </div>
@@ -50,8 +50,11 @@ const EnvioAvaliacoes = () => {
               ) : (
                 <EvaluationTable 
                   evaluations={evaluations} 
-                  loading={loading} 
-                  refreshEvaluations={fetchEvaluations} 
+                  count={count}
+                  currentPage={currentPage}
+                  fetchEvaluations={fetchEvaluations}
+                  refreshEvaluations={fetchEvaluations}
+                  paginationLoading={paginationLoading} // Passa o estado de carregamento
                 />
               )}
             </div>
