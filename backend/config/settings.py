@@ -33,7 +33,8 @@ ALLOWED_HOSTS = config('ALLOWED_HOSTS', cast=Csv())
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'django_auth_adfs.rest_framework.AdfsAccessTokenAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
@@ -79,8 +80,30 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework',
     'drf_spectacular',
-    'apps.core'
+    'apps.core',
+    'apps.rem',
+    'sslserver',
+    'django_auth_adfs',
 ]
+
+AUTHENTICATION_BACKENDS = (
+    'django_auth_adfs.backend.AdfsAccessTokenBackend',
+    'django.contrib.auth.backends.ModelBackend',
+)
+
+AUTH_ADFS = {
+    "TENANT_ID": "72565908-10ef-498e-b93e-c94978366018",
+    "CLIENT_ID": "5880ebd1-ae22-4814-8378-b292515758be",  
+    "AUDIENCE": "api://5880ebd1-ae22-4814-8378-b292515758be", 
+    "RELYING_PARTY_ID": "api://5880ebd1-ae22-4814-8378-b292515758be",
+    "CA_BUNDLE": False,
+    "CLAIM_MAPPING": {"first_name": "given_name", "last_name": "family_name", "email": "email"},
+    "GROUPS_CLAIM": "groups",
+    "USERNAME_CLAIM": "upn",
+    "LOGIN_EXEMPT_URLS": [
+        '^api',
+    ],
+}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
