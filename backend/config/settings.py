@@ -82,9 +82,12 @@ INSTALLED_APPS = [
     'drf_spectacular',
     'apps.core',
     'apps.rem',
-    'sslserver',
     'django_auth_adfs',
 ]
+
+if ENVIRONMENT == 'development':
+    INSTALLED_APPS.append('sslserver')
+
 
 AUTHENTICATION_BACKENDS = (
     'django_auth_adfs.backend.AdfsAccessTokenBackend',
