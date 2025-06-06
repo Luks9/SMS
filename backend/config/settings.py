@@ -92,14 +92,18 @@ AUTHENTICATION_BACKENDS = (
 )
 
 AUTH_ADFS = {
-    "TENANT_ID": "72565908-10ef-498e-b93e-c94978366018",
-    "CLIENT_ID": "5880ebd1-ae22-4814-8378-b292515758be",  
-    "AUDIENCE": "api://5880ebd1-ae22-4814-8378-b292515758be", 
-    "RELYING_PARTY_ID": "api://5880ebd1-ae22-4814-8378-b292515758be",
-    "CA_BUNDLE": False,
-    "CLAIM_MAPPING": {"first_name": "given_name", "last_name": "family_name", "email": "email"},
-    "GROUPS_CLAIM": "groups",
-    "USERNAME_CLAIM": "upn",
+    "TENANT_ID": config("ADFS_TENANT_ID"),
+    "CLIENT_ID": config("ADFS_CLIENT_ID"),
+    "AUDIENCE": config("ADFS_AUDIENCE"),
+    "RELYING_PARTY_ID": config("ADFS_RELYING_PARTY_ID"),
+    "CA_BUNDLE": config("ADFS_CA_BUNDLE", default=False, cast=bool),
+    "CLAIM_MAPPING": {
+        "first_name": "given_name",
+        "last_name": "family_name",
+        "email": "email"
+    },
+    "GROUPS_CLAIM": config("ADFS_GROUPS_CLAIM", default="groups"),
+    "USERNAME_CLAIM": config("ADFS_USERNAME_CLAIM", default="upn"),
     "LOGIN_EXEMPT_URLS": [
         '^api',
     ],
