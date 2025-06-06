@@ -8,9 +8,13 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
 
-  const login = async (username, password) => {
+  const login = async (accessToken) => {
     try {
-      const response = await axios.post('http://localhost:8000/api/login/', { username, password });
+      const response = await axios.post('http://localhost:8000/api/login/', null, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      });
       setUser(response.data.user);
       localStorage.setItem('token', response.data.token);
       navigate('/dashboard');

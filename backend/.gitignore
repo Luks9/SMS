@@ -90,3 +90,6 @@ db.sqlite3
 
 venv/
 media/attachments/
+
+key.pem
+cert.pem
