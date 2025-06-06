@@ -3,13 +3,13 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework import status
-from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from django.contrib.auth.models import User
 from .serializers import UserProfileSerializer, CustomLoginSerializer
 from apps.core.serializers import CompanySerializer
+from django.contrib.auth import authenticate, login
 
 class UserProfileView(APIView):
     permission_classes = [IsAuthenticated]
@@ -35,20 +35,22 @@ class CustomLoginView(APIView):
     permission_classes = [AllowAny]
     serializer_class = CustomLoginSerializer
 
-    def post(self, request):
-        username = request.data.get('username')
-        password = request.data.get('password')
+    def post(self, request):        
+        auth_header = request.headers.get('Authorization')
+        
+        if not auth_header or not auth_header.startswith("Bearer "):
+            return Response({"detail": "Token não fornecido."}, status=status.HTTP_401_UNAUTHORIZED)
 
-        user = authenticate(request, username=username, password=password)
-
+        token = auth_header.split(" ")[1]
+         
+        user = authenticate(request, access_token=token.encode("utf-8"))
         if user is not None:
             is_empresa = user.groups.filter(name='empresa').exists()
 
-            refresh = RefreshToken.for_user(user)
             company = user.companies.first()
-            company_data = CompanySerializer(company).data if company else None  # Serializa a empresa
+            company_data = CompanySerializer(company).data if company else None
             response_data = {
-                'token': str(refresh.access_token),
+                'token': str(token),
                 'user': {
                     'id': user.id,
                     'username': user.username,
@@ -57,19 +59,19 @@ class CustomLoginView(APIView):
                     'company': company_data,
                 },
             }
-            #serializer = self.serializer_class(response_data)
+            
             response = Response(response_data, status=status.HTTP_200_OK)
             response.set_cookie(
                 key='refreshToken',
-                value=str(refresh),
+                value=str(token),
                 httponly=True,
                 secure=True,
                 samesite='Lax'
             )
-            return response
+            return response            
         else:
-            return Response({'detail': 'Usuário desativado ou credenciais inválidas'}, status=status.HTTP_401_UNAUTHORIZED)
-
+            return Response({"detail": "Token inválido ou usuário não autorizado."}, status=status.HTTP_401_UNAUTHORIZED)
+         
 
 class CustomTokenRefreshView(TokenRefreshView):
     def post(self, request, *args, **kwargs):

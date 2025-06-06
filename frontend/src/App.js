@@ -1,7 +1,9 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AdminRoute, EmpresaRoute, PrivateRoute } from './components/PrivateRoute';
+import { ProtectedRoute } from './components/ProtectedRoute';
 import { ThemeProvider } from './context/ThemeContext';
+
 // Páginas
 import Login from './pages/Login';
 import AdminDashboard from './pages/AdminDashboard';
@@ -35,57 +37,71 @@ const App = () => {
         <Route
           path="/admin-dashboard"
           element={
-            <AdminRoute>
-              <AdminDashboard />
-            </AdminRoute>
+            <ProtectedRoute>
+              <AdminRoute>
+                <AdminDashboard />
+              </AdminRoute>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/action-plan/:actionPlanId/view"
           element={
-            <AdminRoute>
+            <ProtectedRoute>
+              <AdminRoute>
               <ViewActionPlan />
             </AdminRoute>
+            </ProtectedRoute>            
           }
         />
         <Route
           path="/action-plan/:evaluationId/create"
           element={
-            <AdminRoute>
-              <CreateActionPlan />
-            </AdminRoute>
+            <ProtectedRoute>
+              <AdminRoute>
+                <CreateActionPlan />
+              </AdminRoute>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/enviar-avaliacao"
           element={
-            <AdminRoute>
-              <EnvioAvaliacoes />
-            </AdminRoute>
+            <ProtectedRoute>
+              <AdminRoute>
+                <EnvioAvaliacoes />
+              </AdminRoute>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/formularios"
           element={
-            <AdminRoute>
-              <Formularios />
-            </AdminRoute>
+            <ProtectedRoute>
+              <AdminRoute>
+                <Formularios />
+              </AdminRoute>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/evaluation/:id/details"
           element={
-            <AdminRoute>
-              <EvaluationDetails />
-            </AdminRoute>
+            <ProtectedRoute>
+              <AdminRoute>
+                <EvaluationDetails />
+              </AdminRoute>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/rem-avaliador"
           element={
-            <AdminRoute>
-              <RemAvaliador />
-            </AdminRoute>
+            <ProtectedRoute>
+              <AdminRoute>
+                <RemAvaliador />
+              </AdminRoute>
+            </ProtectedRoute>
           }
         />
 
@@ -93,73 +109,91 @@ const App = () => {
         <Route
           path="/empresa-dashboard"
           element={
-            <EmpresaRoute>
-              <EmpresaDashboard />
-            </EmpresaRoute>
+            <ProtectedRoute>
+              <EmpresaRoute>
+                <EmpresaDashboard />
+              </EmpresaRoute>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/empresa-avaliacao"
           element={
-            <EmpresaRoute>
-              <EvaluationCompany companyId={companyId} />
-            </EmpresaRoute>
+            <ProtectedRoute>
+              <EmpresaRoute>
+                <EvaluationCompany companyId={companyId} />
+              </EmpresaRoute>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/empresa-plano-acao"
           element={
-            <EmpresaRoute>
-              <ActionPlanCompany />
-            </EmpresaRoute>
+            <ProtectedRoute>
+              <EmpresaRoute>
+                <ActionPlanCompany />
+              </EmpresaRoute>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/action-plan/:actionPlanId/answer"
           element={
-            <EmpresaRoute>
-              <ActionPlanAnswerForm />
-            </EmpresaRoute>
+            <ProtectedRoute>
+              <EmpresaRoute>
+                <ActionPlanAnswerForm />
+              </EmpresaRoute>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/evaluation/:id/answer"
           element={
-            <EmpresaRoute>
-              <CompanyAnswer />
-            </EmpresaRoute>
+            <ProtectedRoute>
+              <EmpresaRoute>
+                <CompanyAnswer />
+              </EmpresaRoute>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/action-plan/:actionPlanId"
           element={
-            <EmpresaRoute>
-              <ActionPlanView />
-            </EmpresaRoute>
+            <ProtectedRoute>
+              <EmpresaRoute>
+                <ActionPlanView />
+              </EmpresaRoute>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/rem-empresa"
           element={
-            <EmpresaRoute>
-              <RemCompany companyId={companyId} />
-            </EmpresaRoute>
+            <ProtectedRoute>
+              <EmpresaRoute>
+                <RemCompany companyId={companyId} />
+              </EmpresaRoute>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/rem-empresa/novo"
           element={
-            <EmpresaRoute>
-              <RemForm companyId={companyId} />
-            </EmpresaRoute>
+            <ProtectedRoute>
+              <EmpresaRoute>
+                <RemForm companyId={companyId} />
+              </EmpresaRoute>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/rem-empresa/edite"
           element={
-            <EmpresaRoute>
-              <RemForm companyId={companyId} />
-            </EmpresaRoute>
+            <ProtectedRoute>
+              <EmpresaRoute>
+                <RemForm companyId={companyId} />
+              </EmpresaRoute>
+            </ProtectedRoute>
           }
         />
         {/* Rota padrão - Redirecionamento baseado na autenticação */}

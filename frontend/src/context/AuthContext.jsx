@@ -41,16 +41,20 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const login = async (username, password) => {
+ const login = async (accessToken) => {
     try {
-      const response = await axios.post('/api/users/login/', { username, password });
+      const response = await axios.post('/api/users/login/',  null, { 
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      });
       const loggedUser = response.data.user;
-      const accessToken = response.data.token;
+      const token = response.data.token;
 
       setUser(loggedUser);
-      setToken(accessToken);
+      setToken(token);
       localStorage.setItem('user', JSON.stringify(loggedUser));
-      localStorage.setItem('token', accessToken);
+      localStorage.setItem('token', token);
 
       setMessage('Login realizado com sucesso!'); // Mensagem de sucesso
       

@@ -3,8 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@azure/msal-browser": "^4.13.0",
+    "@azure/msal-react": "^3.0.12",
     "@fortawesome/fontawesome-free": "^6.6.0",
     "@fortawesome/fontawesome-svg-core": "^6.6.0",
+    "@fortawesome/free-brands-svg-icons": "^6.7.2",
     "@fortawesome/free-solid-svg-icons": "^6.6.0",
     "@fortawesome/react-fontawesome": "^0.2.2",
     "@testing-library/jest-dom": "^5.17.0",
@@ -48,5 +51,5 @@
       "last 1 safari version"
     ]
   },
-  "proxy": "https://localhost:8000"
+  "proxy": "https://127.0.0.1:8000"
 }
