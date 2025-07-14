@@ -12,6 +12,7 @@ from apps.core.serializers import CompanySerializer
 from django.contrib.auth import authenticate
 from django.shortcuts import get_object_or_404
 from rest_framework.pagination import PageNumberPagination
+from apps.users.utils.domain_utils import associate_user_with_company_by_domain
 
 
 class StandardResultsSetPagination(PageNumberPagination):
@@ -54,8 +55,12 @@ class CustomLoginView(APIView):
          
         user = authenticate(request, access_token=token.encode("utf-8"))
         if user is not None:
-            is_empresa = user.groups.filter(name='empresa').exists()
-
+            
+            user = associate_user_with_company_by_domain(user)
+            
+            if user is None:  
+                return Response({"detail": "Usuário não possui dominio de empresa válida."}, status=status.HTTP_403_FORBIDDEN)
+            
             company = user.companies.first()
             company_data = CompanySerializer(company).data if company else None
             response_data = {

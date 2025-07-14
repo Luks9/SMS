@@ -15,7 +15,18 @@ admin.site.index_title = "Bem-vindo ao Admin"
 
 @admin.register(Company)
 class CompanyAdmin(admin.ModelAdmin):
-    list_display = ('name', 'cnpj', 'user')
+    list_display = ('name', 'cnpj', 'user', 'dominio')
+    list_filter = ('is_active',)
+    search_fields = ('name', 'cnpj', 'dominio')
+    
+    # Campos obrigatórios no formulário
+    fields = ('name', 'cnpj', 'dominio', 'user', 'is_active')
+    
+    # Torna o campo user opcional no formulário do admin
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        form.base_fields['user'].required = False
+        return form
     
 
 @admin.register(CategoryQuestion)

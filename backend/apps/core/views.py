@@ -33,6 +33,13 @@ class StandardResultsSetPagination(PageNumberPagination):
 class CompanyViewSet(viewsets.ModelViewSet):
     queryset = Company.objects.all()
     serializer_class = CompanySerializer
+    pagination_class = StandardResultsSetPagination
+
+    def get_queryset(self):
+        """
+        Override get_queryset to add ordering and any future filtering
+        """
+        return Company.objects.all().order_by('name')
 
 
 @extend_schema(tags=['Categorias'])

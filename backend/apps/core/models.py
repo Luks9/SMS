@@ -21,7 +21,8 @@ class Company(models.Model):
     name = models.CharField(max_length=255)
     cnpj = models.CharField(max_length=18, unique=True)
     is_active = models.BooleanField(default=True)
-    user = models.ForeignKey(User, on_delete=models.PROTECT, related_name='companies')  # Relacionando Company a User
+    user = models.ForeignKey(User, on_delete=models.PROTECT, related_name='companies', null=True)  # Relacionando Company a User
+    dominio = models.CharField(max_length=255, blank=True)
 
     class Meta:
         verbose_name = "Empresa"
@@ -29,6 +30,13 @@ class Company(models.Model):
 
     def __str__(self):
         return self.name
+    
+    @classmethod
+    def find_by_domain(cls, domain):
+        """
+        Busca uma empresa ativa pelo domínio
+        """
+        return cls.objects.filter(dominio=domain, is_active=True).first()
 
 class CategoryQuestion(models.Model):
     name = models.CharField(max_length=255)

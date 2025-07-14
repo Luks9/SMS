@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faEdit, faTrash, faCheck, faTimes } from '@fortawesome/free-solid-svg-icons';
+import { faEdit, faCheck, faTimes } from '@fortawesome/free-solid-svg-icons';
 
-const UserTable = ({ users, groups, loading, onEdit, onDelete }) => {
+const UserTable = ({ users, groups, loading, onEdit}) => {
 
   const getGroupNames = (userGroups) => {
     return userGroups.join(', ');

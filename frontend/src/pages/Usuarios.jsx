@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
 import Layout from '../components/Layout';
 import UserTable from '../components/tables/UserTable';
+import CompanyTable from '../components/tables/CompanyTable';
 import UserEditModal from '../components/modals/UserEditModal';
+import CompanyEditModal from '../components/modals/CompanyEditModal';
 import useFetchUsers from '../hooks/useFetchUsers';
+import useFetchCompanies from '../hooks/useFetchCompanies';
 
 const Usuarios = () => {
   const { 
@@ -21,21 +24,58 @@ const Usuarios = () => {
     deleteUser
   } = useFetchUsers();
 
+  const {
+    companies,
+    users: companyUsers,
+    count: companyCount,
+    next: companyNext,
+    previous: companyPrevious,
+    currentPage: companyCurrentPage,
+    loading: companyLoading,
+    paginationLoading: companyPaginationLoading,
+    error: companyError,
+    fetchCompanies,
+    createCompany,
+    updateCompany,
+    deleteCompany
+  } = useFetchCompanies();
+
   const [selectedUser, setSelectedUser] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [selectedCompany, setSelectedCompany] = useState(null);
+  const [isCompanyModalOpen, setIsCompanyModalOpen] = useState(false);
 
   const handleEditUser = (user) => {
     setSelectedUser(user);
-    setIsModalOpen(true);
+    setIsUserModalOpen(true);
   };
 
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
+  const handleCloseUserModal = () => {
+    setIsUserModalOpen(false);
     setSelectedUser(null);
+  };
+
+  const handleEditCompany = (company) => {
+    setSelectedCompany(company);
+    setIsCompanyModalOpen(true);
+  };
+
+  const handleCloseCompanyModal = () => {
+    setIsCompanyModalOpen(false);
+    setSelectedCompany(null);
   };
 
   const handleSaveUser = async (userId, userData) => {
     await updateUser(userId, userData);
+  };
+
+  const handleSaveCompany = async (companyId, companyData) => {
+    try {
+      await updateCompany(companyId, companyData);
+      handleCloseCompanyModal();
+    } catch (error) {
+      console.error('Erro ao salvar empresa:', error);
+    }
   };
 
   const handleManageGroups = async (userId, groupIds, action) => {
@@ -46,11 +86,38 @@ const Usuarios = () => {
     await deleteUser(userId);
   };
 
+  const handleDeleteCompany = async (companyId) => {
+    try {
+      await deleteCompany(companyId);
+    } catch (error) {
+      console.error('Erro ao deletar empresa:', error);
+    }
+  };
+
   const handlePageChange = (page) => {
     fetchUsers(page);
   };
 
+  const handleCompanyPageChange = (page) => {
+    fetchCompanies(page);
+  };
+
+  const handleCreateCompany = () => {
+    setSelectedCompany(null);
+    setIsCompanyModalOpen(true);
+  };
+
+  const handleCreateCompanySubmit = async (companyData) => {
+    try {
+      await createCompany(companyData);
+      handleCloseCompanyModal();
+    } catch (error) {
+      console.error('Erro ao criar empresa:', error);
+    }
+  };
+
   const totalPages = Math.ceil(count / 10);
+  const companyTotalPages = Math.ceil(companyCount / 10);
 
   return (
     <Layout>
@@ -63,6 +130,7 @@ const Usuarios = () => {
           </div>
         )}
 
+        {/* Tabela de Usuários */}
         <div className="card">
           <header className="card-header">
             <p className="card-header-title">
@@ -78,7 +146,7 @@ const Usuarios = () => {
               onDelete={handleDeleteUser}
             />
 
-            {/* Paginação */}
+            {/* Paginação de Usuários */}
             {totalPages > 1 && (
               <nav className="pagination is-centered" role="navigation">
                 <button 
@@ -116,14 +184,91 @@ const Usuarios = () => {
           </div>
         </div>
 
-        {/* Modal de Edição */}
+        {/* Tabela de Empresas */}
+        <div className="card" style={{ marginTop: '2rem' }}>
+          <header className="card-header">
+            <p className="card-header-title">
+              Empresas ({companyCount})
+            </p>
+            <div className="card-header-icon">
+              <button 
+                className="button is-success"
+                onClick={handleCreateCompany}
+              >
+                Nova Empresa
+              </button>
+            </div>
+          </header>
+          <div className="card-content">
+            {companyError && (
+              <div className="notification is-danger">
+                {companyError}
+              </div>
+            )}
+
+            <CompanyTable 
+              companies={companies}
+              loading={companyLoading}
+              onEdit={handleEditCompany}
+              onDelete={handleDeleteCompany}
+            />
+
+            {/* Paginação de Empresas */}
+            {companyTotalPages > 1 && (
+              <nav className="pagination is-centered" role="navigation">
+                <button 
+                  className={`pagination-previous ${!companyPrevious ? 'is-disabled' : ''} ${companyPaginationLoading ? 'is-loading' : ''}`}
+                  onClick={() => handleCompanyPageChange(companyCurrentPage - 1)}
+                  disabled={!companyPrevious || companyPaginationLoading}
+                >
+                  Anterior
+                </button>
+                <button 
+                  className={`pagination-next ${!companyNext ? 'is-disabled' : ''} ${companyPaginationLoading ? 'is-loading' : ''}`}
+                  onClick={() => handleCompanyPageChange(companyCurrentPage + 1)}
+                  disabled={!companyNext || companyPaginationLoading}
+                >
+                  Próximo
+                </button>
+                <ul className="pagination-list">
+                  {Array.from({ length: Math.min(companyTotalPages, 5) }, (_, i) => {
+                    const pageNum = i + 1;
+                    return (
+                      <li key={pageNum}>
+                        <button 
+                          className={`pagination-link ${companyCurrentPage === pageNum ? 'is-current' : ''}`}
+                          onClick={() => handleCompanyPageChange(pageNum)}
+                          disabled={companyPaginationLoading}
+                        >
+                          {pageNum}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </nav>
+            )}
+          </div>
+        </div>
+
+        {/* Modal de Edição de Usuário */}
         <UserEditModal 
           user={selectedUser}
           groups={groups}
-          isOpen={isModalOpen}
-          onClose={handleCloseModal}
+          isOpen={isUserModalOpen}
+          onClose={handleCloseUserModal}
           onSave={handleSaveUser}
           onManageGroups={handleManageGroups}
+        />
+
+        {/* Modal de Edição de Empresa */}
+        <CompanyEditModal 
+          company={selectedCompany}
+          users={companyUsers}
+          isOpen={isCompanyModalOpen}
+          onClose={handleCloseCompanyModal}
+          onSave={handleSaveCompany}
+          onCreate={handleCreateCompanySubmit}
         />
       </div>
     </Layout>
