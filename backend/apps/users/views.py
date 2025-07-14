@@ -6,10 +6,19 @@ from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
-from django.contrib.auth.models import User
-from .serializers import UserProfileSerializer, CustomLoginSerializer
+from django.contrib.auth.models import User, Group
+from .serializers import UserProfileSerializer, CustomLoginSerializer, UserSerializer, UserUpdateSerializer, GroupSerializer, UserGroupSerializer
 from apps.core.serializers import CompanySerializer
-from django.contrib.auth import authenticate, login
+from django.contrib.auth import authenticate
+from django.shortcuts import get_object_or_404
+from rest_framework.pagination import PageNumberPagination
+
+
+class StandardResultsSetPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
 
 class UserProfileView(APIView):
     permission_classes = [IsAuthenticated]
@@ -100,3 +109,78 @@ class CustomTokenRefreshView(TokenRefreshView):
             return Response({"detail": "Token inválido ou expirado."}, status=401)
 
         return response
+
+
+class UserListView(APIView):
+    permission_classes = [IsAuthenticated]
+ 
+    def get(self, request):
+        pagination_class = StandardResultsSetPagination()
+        users = User.objects.all()
+        paginated_users = pagination_class.paginate_queryset(users, request)
+        serializer = UserSerializer(paginated_users, many=True)
+        return pagination_class.get_paginated_response(serializer.data)
+
+
+class UserDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, user_id):
+        user = get_object_or_404(User, id=user_id)
+        serializer = UserSerializer(user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class UserUpdateView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def put(self, request, user_id):
+        user = get_object_or_404(User, id=user_id)
+        serializer = UserUpdateSerializer(user, data=request.data, partial=True)
+        
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class GroupListView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        groups = Group.objects.all()
+        serializer = GroupSerializer(groups, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+class UserGroupManagementView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, user_id):
+        user = get_object_or_404(User, id=user_id)
+        serializer = UserGroupSerializer(data=request.data)
+        
+        if serializer.is_valid():
+            group_ids = serializer.validated_data['group_ids']
+            action = serializer.validated_data['action']
+            
+            groups = Group.objects.filter(id__in=group_ids)
+            
+            if action == 'add':
+                user.groups.add(*groups)
+                message = "Grupos adicionados com sucesso."
+            elif action == 'remove':
+                user.groups.remove(*groups)
+                message = "Grupos removidos com sucesso."
+            elif action == 'set':
+                user.groups.set(groups)
+                message = "Grupos atualizados com sucesso."
+            
+            # Retornar os dados atualizados do usuário
+            user_serializer = UserSerializer(user)
+            return Response({
+                'message': message,
+                'user': user_serializer.data
+            }, status=status.HTTP_200_OK)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

@@ -1,7 +1,8 @@
 from pathlib import Path
 from datetime import timedelta
 from decouple import config, Csv
-import os, json
+import os 
+import urllib3
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -27,6 +28,9 @@ DEBUG = config('DEBUG', default=True, cast=bool)
 
 if DEBUG and ENVIRONMENT == 'production':
     print("WARNING: DEBUG should not be set to True in production!")
+
+if config('ENVIRONMENT', default='development') == 'development':
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', cast=Csv())
 
@@ -82,6 +86,7 @@ INSTALLED_APPS = [
     'drf_spectacular',
     'apps.core',
     'apps.rem',
+    'apps.users',
     'django_auth_adfs',
 ]
 
@@ -110,6 +115,8 @@ AUTH_ADFS = {
     "LOGIN_EXEMPT_URLS": [
         '^api',
     ],
+    "DISABLE_SSO": False,
+    "BOOLEAN_CLAIM_MAPPING": {},
 }
 
 MIDDLEWARE = [
@@ -188,4 +195,21 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
+}
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'django_auth_adfs': {
+            'handlers': ['console'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+    },
 }
