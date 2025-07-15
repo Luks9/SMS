@@ -1,7 +1,7 @@
 import React, { useContext } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faTachometerAlt, faFileAlt, faNotesMedical, faSignOutAlt, faPaperPlane, faFileContract } from '@fortawesome/free-solid-svg-icons';
+import { faTachometerAlt, faFileAlt, faNotesMedical, faSignOutAlt, faPaperPlane, faFileContract, faUsers } from '@fortawesome/free-solid-svg-icons';
 import '../styles/Sidebar.css';
 import { AuthContext } from '../context/AuthContext';
 
@@ -30,6 +30,12 @@ const Sidebar = () => {
       to: '/formularios',
       label: 'Formulários',
       icon: faFileAlt,
+      allowed: ['admin'],
+    },
+    {
+      to: '/usuarios',
+      label: 'Usuários',
+      icon: faUsers,
       allowed: ['admin'],
     },
     {

@@ -126,7 +126,7 @@ const SendEvaluationForm = ({ forms, companies, onEvaluationSent }) => {
             <div className="control">
               <Select
                 name="company"
-                options={companies.map(company => ({ value: company.id, label: company.name }))}
+                options={companies ? companies.map(company => ({ value: company.id, label: company.name })) : []}
                 className="basic-single"
                 classNamePrefix="select"
                 onChange={handleCompanyChange}
@@ -141,7 +141,7 @@ const SendEvaluationForm = ({ forms, companies, onEvaluationSent }) => {
             <div className="control">
               <Select
                 name="form"
-                options={forms.map(form => ({ value: form.id, label: form.name }))}
+                options={forms ? forms.map(form => ({ value: form.id, label: form.name })) : []}
                 className="basic-single"
                 classNamePrefix="select"
                 onChange={handleFormChange}

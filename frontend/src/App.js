@@ -13,6 +13,7 @@ import EnvioAvaliacoes from './pages/EnvioAvaliacoes';
 import EvaluationDetails from './pages/EvaluationDetails';
 import EvaluationCompany from './pages/EvaluationCompany';
 import ActionPlanCompany from './pages/ActionPlanCompany';
+import Usuarios from './pages/Usuarios';
 // Componentes de Planos de Ação
 import ActionPlanAnswerForm from './components/action_plan/ActionPlanAnswerForm';
 import ActionPlanView from './components/action_plan/ActionPlanView';
@@ -94,12 +95,22 @@ const App = () => {
             </ProtectedRoute>
           }
         />
+          <Route
+            path="/rem-avaliador"
+            element={
+              <ProtectedRoute>
+                <AdminRoute>
+                  <RemAvaliador />
+                </AdminRoute>
+              </ProtectedRoute>
+          }
+        />
         <Route
-          path="/rem-avaliador"
+          path="/usuarios"
           element={
             <ProtectedRoute>
               <AdminRoute>
-                <RemAvaliador />
+                <Usuarios />
               </AdminRoute>
             </ProtectedRoute>
           }

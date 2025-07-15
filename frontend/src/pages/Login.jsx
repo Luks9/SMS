@@ -39,9 +39,9 @@ const Login = () => {
               type={message.includes('sucesso') ? 'success' : 'danger'}
               onClose={() => setMessage(null)}
             />
-          )}
-          <form onSubmit={handleSubmit} className="box">
-            <h1 className="login-title">SMS AVALIA</h1>
+          )} 
+          <h1 className="login-title">SMS AVALIA</h1>
+          {/* <form onSubmit={handleSubmit} className="box">
             <div className="login-field">
               <label className="login-label">Username</label>
               <div className="control">
@@ -71,10 +71,10 @@ const Login = () => {
                 <button type="submit" disabled className="login-button-disabled">Login</button>
               </div>
             </div>
-          </form>
-
+          </form> */}
           <div className="box">
             <div className="btn-login-field">
+              <label className="login-label">Login</label>
               <div className="control">
                 <button onClick={handleLogin} className="login-button is-primary" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                   <FontAwesomeIcon icon={faMicrosoft} />

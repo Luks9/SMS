@@ -33,6 +33,26 @@ class StandardResultsSetPagination(PageNumberPagination):
 class CompanyViewSet(viewsets.ModelViewSet):
     queryset = Company.objects.all()
     serializer_class = CompanySerializer
+    pagination_class = StandardResultsSetPagination
+
+    def get_queryset(self):
+        """
+        Override get_queryset to add ordering and any future filtering
+        """
+        return Company.objects.all().order_by('name')
+
+    @extend_schema(
+        description="Retorna todas as empresas sem paginação",
+        responses={200: CompanySerializer(many=True)}
+    )
+    @action(detail=False, methods=['get'], url_path='all')
+    def all_companies(self, request):
+        """
+        Endpoint para retornar todas as empresas sem paginação
+        """
+        companies = Company.objects.all().order_by('name')
+        serializer = CompanySerializer(companies, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 @extend_schema(tags=['Categorias'])
