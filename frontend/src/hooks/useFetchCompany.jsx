@@ -13,7 +13,7 @@ const useFetchCompany = () => {
   const fetchCompanies = async () => {
     try {
       const token = getToken();
-      const response = await axios.get('/api/companies/', {
+      const response = await axios.get('/api/companies/all/', {
         headers: {
           Authorization: `Bearer ${token}`,
         },

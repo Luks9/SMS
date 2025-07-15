@@ -41,6 +41,19 @@ class CompanyViewSet(viewsets.ModelViewSet):
         """
         return Company.objects.all().order_by('name')
 
+    @extend_schema(
+        description="Retorna todas as empresas sem paginação",
+        responses={200: CompanySerializer(many=True)}
+    )
+    @action(detail=False, methods=['get'], url_path='all')
+    def all_companies(self, request):
+        """
+        Endpoint para retornar todas as empresas sem paginação
+        """
+        companies = Company.objects.all().order_by('name')
+        serializer = CompanySerializer(companies, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 @extend_schema(tags=['Categorias'])
 class CategoryQuestionViewSet(viewsets.ModelViewSet):
