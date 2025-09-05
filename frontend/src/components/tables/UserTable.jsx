@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEdit, faCheck, faTimes, faSpinner } from '@fortawesome/free-solid-svg-icons';
-import Pagination from './Pagination';
 
 const UserTable = ({ users, groups, loading, onEdit, count, currentPage, fetchUsers, paginationLoading }) => {
   const itemsPerPage = 3;
@@ -93,14 +92,6 @@ const UserTable = ({ users, groups, loading, onEdit, count, currentPage, fetchUs
           </tbody>
         </table>
       </div>
-
-      <Pagination
-        totalItems={count}
-        itemsPerPage={itemsPerPage}
-        currentPage={currentPage}
-        onPageChange={(page) => fetchUsers(page)}
-        disabled={paginationLoading}
-      />
     </div>
   );
 };
