@@ -49,7 +49,7 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         return value
         
     def validate_email(self, value):
-        if User.objects.filter(email=value).exclude(id=self.instance.id).exists():
+        if value and User.objects.filter(email=value).exclude(id=self.instance.id).exists():
             raise serializers.ValidationError("Este email já está em uso.")
         return value
 

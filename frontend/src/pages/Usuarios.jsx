@@ -264,7 +264,7 @@ const Usuarios = () => {
         {/* Modal de Edição de Empresa */}
         <CompanyEditModal 
           company={selectedCompany}
-          users={companyUsers}
+          users={users}
           isOpen={isCompanyModalOpen}
           onClose={handleCloseCompanyModal}
           onSave={handleSaveCompany}
