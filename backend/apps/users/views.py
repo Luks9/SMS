@@ -52,39 +52,68 @@ class CustomLoginView(APIView):
             return Response({"detail": "Token não fornecido."}, status=status.HTTP_401_UNAUTHORIZED)
 
         token = auth_header.split(" ")[1]
-         
-        user = authenticate(request, access_token=token.encode("utf-8"))
-        if user is not None:
-            
-            user = associate_user_with_company_by_domain(user)
-            
-            if user is None:  
-                return Response({"detail": "Usuário não possui dominio de empresa válida."}, status=status.HTTP_403_FORBIDDEN)
-            
-            company = user.companies.first()
-            company_data = CompanySerializer(company).data if company else None
-            response_data = {
-                'token': str(token),
-                'user': {
-                    'id': user.id,
-                    'username': user.username,
-                    'email': user.email,
-                    'name': f'{user.first_name} {user.last_name}',
-                    'company': company_data,
-                },
-            }
-            
-            response = Response(response_data, status=status.HTTP_200_OK)
-            response.set_cookie(
-                key='refreshToken',
-                value=str(token),
-                httponly=True,
-                secure=True,
-                samesite='Lax'
-            )
-            return response            
-        else:
-            return Response({"detail": "Token inválido ou usuário não autorizado."}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        try:
+            user = authenticate(request, access_token=token.encode("utf-8"))
+            if user is not None:
+                
+                # Log para debug
+                print(f"Usuário autenticado: {user.username}")
+                
+                # Verifica se o usuário precisa de processamento (username com # ou sem empresa)
+                needs_processing = (
+                    '#' in user.username or 
+                    not user.companies.exists() or
+                    not user.groups.exists()
+                )
+                
+                if needs_processing:
+                    print(f"Processando usuário: {user.username}")
+                    processed_user = associate_user_with_company_by_domain(user)
+                    
+                    if processed_user is None:  
+                        return Response({
+                            "detail": "Usuário não possui dominio de empresa válida.",
+                            "username": user.username
+                        }, status=status.HTTP_403_FORBIDDEN)
+                    
+                    user = processed_user
+                else:
+                    print(f"Usuário já configurado: {user.username}")
+                
+                # Busca a empresa do usuário
+                company = user.companies.first()
+                company_data = CompanySerializer(company).data if company else None
+                
+                response_data = {
+                    'token': str(token),
+                    'user': {
+                        'id': user.id,
+                        'username': user.username,
+                        'email': user.email,
+                        'name': f'{user.first_name} {user.last_name}'.strip(),
+                        'company': company_data,
+                    },
+                }
+                
+                response = Response(response_data, status=status.HTTP_200_OK)
+                response.set_cookie(
+                    key='refreshToken',
+                    value=str(token),
+                    httponly=True,
+                    secure=True,
+                    samesite='Lax'
+                )
+                return response            
+            else:
+                return Response({"detail": "Token inválido ou usuário não autorizado."}, status=status.HTTP_401_UNAUTHORIZED)
+                
+        except Exception as e:
+            print(f"Erro no login: {str(e)}")
+            return Response({
+                "detail": "Erro interno durante o login.",
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
          
 
 class CustomTokenRefreshView(TokenRefreshView):
