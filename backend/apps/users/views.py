@@ -55,34 +55,26 @@ class CustomLoginView(APIView):
         
         try:
             user = authenticate(request, access_token=token.encode("utf-8"))
-            if user is not None:
-                
-                # Log para debug
-                print(f"Usuário autenticado: {user.username}")
-                
-                # Verifica se o usuário precisa de processamento (username com # ou sem empresa)
-                needs_processing = (
-                    '#' in user.username or 
-                    not user.companies.exists() or
-                    not user.groups.exists()
+            if user is not None:                
+                # Verifica se precisa de processamento
+                # Superusuários e usuários bravaenergia.com NÃO devem ter empresa
+                needs_fallback = (
+                    not user.is_superuser and  # Não é superuser
+                    '@bravaenergia.com' not in user.username and  # Não é bravaenergia.com
+                    not user.companies.exists()  # E não tem empresa
                 )
                 
-                if needs_processing:
-                    print(f"Processando usuário: {user.username}")
+                if needs_fallback:
                     processed_user = associate_user_with_company_by_domain(user)
-                    
-                    if processed_user is None:  
+                    if processed_user is None:
                         return Response({
                             "detail": "Usuário não possui dominio de empresa válida.",
                             "username": user.username
                         }, status=status.HTTP_403_FORBIDDEN)
-                    
                     user = processed_user
-                else:
-                    print(f"Usuário já configurado: {user.username}")
                 
-                # Busca a empresa do usuário
-                company = user.companies.first()
+                # Busca a empresa do usuário (será None para superusuários)
+                company = user.companies.first() if not user.is_superuser else None
                 company_data = CompanySerializer(company).data if company else None
                 
                 response_data = {
@@ -92,7 +84,7 @@ class CustomLoginView(APIView):
                         'username': user.username,
                         'email': user.email,
                         'name': f'{user.first_name} {user.last_name}'.strip(),
-                        'company': company_data,
+                        'company': company_data,  # None para superusuários
                     },
                 }
                 
@@ -110,6 +102,8 @@ class CustomLoginView(APIView):
                 
         except Exception as e:
             print(f"Erro no login: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return Response({
                 "detail": "Erro interno durante o login.",
                 "error": str(e)

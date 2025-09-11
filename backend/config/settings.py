@@ -95,7 +95,7 @@ if ENVIRONMENT == 'development':
 
 
 AUTHENTICATION_BACKENDS = (
-    'django_auth_adfs.backend.AdfsAccessTokenBackend',
+    'apps.users.backends.CustomAdfsBackend',
     'django.contrib.auth.backends.ModelBackend',
 )
 
