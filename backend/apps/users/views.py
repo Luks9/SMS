@@ -13,7 +13,9 @@ from django.contrib.auth import authenticate
 from django.shortcuts import get_object_or_404
 from rest_framework.pagination import PageNumberPagination
 from apps.users.utils.domain_utils import associate_user_with_company_by_domain
+import logging
 
+logger = logging.getLogger(__name__)
 
 class StandardResultsSetPagination(PageNumberPagination):
     page_size = 10
@@ -56,24 +58,20 @@ class CustomLoginView(APIView):
         try:
             user = authenticate(request, access_token=token.encode("utf-8"))
             if user is not None:                
-                # Verifica se precisa de processamento
-                # Superusuários e usuários bravaenergia.com NÃO devem ter empresa
-                needs_fallback = (
-                    not user.is_superuser and  # Não é superuser
-                    '@bravaenergia.com' not in user.username and  # Não é bravaenergia.com
-                    not user.companies.exists()  # E não tem empresa
-                )
+                logger.info(f"Login bem-sucedido: {user.username}")
                 
-                if needs_fallback:
+                # Verificação final apenas para casos extremos
+                if not user.is_superuser and (not user.companies.exists() or not user.groups.exists()):
+                    logger.warning(f"Reprocessamento emergencial para {user.username}")
                     processed_user = associate_user_with_company_by_domain(user)
                     if processed_user is None:
                         return Response({
-                            "detail": "Usuário não possui dominio de empresa válida.",
+                            "detail": "Usuário não possui domínio de empresa válida.",
                             "username": user.username
                         }, status=status.HTTP_403_FORBIDDEN)
                     user = processed_user
                 
-                # Busca a empresa do usuário (será None para superusuários)
+                # Busca a empresa do usuário
                 company = user.companies.first() if not user.is_superuser else None
                 company_data = CompanySerializer(company).data if company else None
                 
@@ -84,7 +82,9 @@ class CustomLoginView(APIView):
                         'username': user.username,
                         'email': user.email,
                         'name': f'{user.first_name} {user.last_name}'.strip(),
-                        'company': company_data,  # None para superusuários
+                        'company': company_data,
+                        'is_superuser': user.is_superuser,
+                        'groups': list(user.groups.values_list('name', flat=True)),
                     },
                 }
                 
@@ -101,9 +101,7 @@ class CustomLoginView(APIView):
                 return Response({"detail": "Token inválido ou usuário não autorizado."}, status=status.HTTP_401_UNAUTHORIZED)
                 
         except Exception as e:
-            print(f"Erro no login: {str(e)}")
-            import traceback
-            traceback.print_exc()
+            logger.error(f"Erro no login: {str(e)}")
             return Response({
                 "detail": "Erro interno durante o login.",
                 "error": str(e)

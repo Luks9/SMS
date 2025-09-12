@@ -14,6 +14,7 @@ class CustomAdfsBackend(AdfsAccessTokenBackend):
     def __init__(self):
         super().__init__()
         self.settings = Settings()
+        self._user_cache = {}  # Cache simples para evitar consultas desnecessárias
     
     def create_user(self, claims):
         """
@@ -26,8 +27,37 @@ class CustomAdfsBackend(AdfsAccessTokenBackend):
         if not cleaned_username:
             logger.error(f"Username inválido após limpeza: {username}")
             return None
-            
         
+        # Verifica cache primeiro
+        cache_key = f"user_{cleaned_username}"
+        if cache_key in self._user_cache:
+            user = self._user_cache[cache_key]
+            logger.info(f"Usuário {cleaned_username} encontrado no cache")
+            return user
+        
+        # Verifica se usuário já existe com username limpo
+        try:
+            existing_user = User.objects.get(username=cleaned_username)
+            logger.info(f"Usuário {cleaned_username} encontrado no banco")
+            
+            # Para usuários existentes, verifica se precisa reprocessar apenas uma vez
+            if not existing_user.is_superuser:
+                has_company = existing_user.companies.exists()
+                has_group = existing_user.groups.exists()
+                
+                if not (has_company and has_group):
+                    logger.info(f"Configurando empresa/grupos para {cleaned_username}")
+                    processed_user = associate_user_with_company_by_domain(existing_user)
+                    if processed_user:
+                        existing_user = processed_user
+            
+            # Adiciona ao cache
+            self._user_cache[cache_key] = existing_user
+            return existing_user
+            
+        except User.DoesNotExist:
+            pass  # Continua para criar novo usuário
+            
         # Substitui o claim do username pelo username limpo
         claims[self.settings.USERNAME_CLAIM] = cleaned_username
         
@@ -35,37 +65,26 @@ class CustomAdfsBackend(AdfsAccessTokenBackend):
         user = super().create_user(claims)
         
         if user:
+            logger.info(f"Novo usuário criado: {cleaned_username}")
             # Associa empresa e grupos na criação
             processed_user = associate_user_with_company_by_domain(user)
-            if processed_user:
-                return processed_user
-            else:
-                # Retorna o usuário mesmo se não conseguir associar empresa
-                return user
+            final_user = processed_user if processed_user else user
+            
+            # Adiciona ao cache
+            self._user_cache[cache_key] = final_user
+            return final_user
         
         return None
     
-    def authenticate_user(self, user, claims):
-        """
-        Para usuários existentes, apenas verifica se o username precisa ser limpo
-        """
-        original_username = claims.get(self.settings.USERNAME_CLAIM, '')
-        cleaned_username = clean_username(original_username)
-        
-        if cleaned_username and cleaned_username != user.username:
-            user.username = cleaned_username
-            user.save(update_fields=['username'])
-        
-        return super().authenticate_user(user, claims)
-    
     def authenticate(self, request, access_token=None, **kwargs):
         """
-        Método principal de autenticação com tratamento de erros melhorado
+        Método principal de autenticação simplificado
         """
         try:
-            return super().authenticate(request, access_token=access_token, **kwargs)
+            user = super().authenticate(request, access_token=access_token, **kwargs)
+            if user:
+                logger.info(f"Autenticação bem-sucedida: {user.username}")
+            return user
         except Exception as e:
             logger.error(f"Erro na autenticação ADFS: {str(e)}")
-            if hasattr(e, 'args') and e.args:
-                logger.error(f"Detalhes do erro: {e.args}")
             return None

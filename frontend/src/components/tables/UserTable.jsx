@@ -52,7 +52,6 @@ const UserTable = ({ users, groups, loading, onEdit, count, currentPage, fetchUs
               <th>Email</th>
               <th>Status</th>
               <th>Permissões</th>
-              <th>Grupos</th>
               <th>Editar</th>
             </tr>
           </thead>
@@ -68,13 +67,11 @@ const UserTable = ({ users, groups, loading, onEdit, count, currentPage, fetchUs
                   </span>
                 </td>
                 <td>
-                  <div className="tags">
-                    {user.is_staff && <span className="tag is-info">Staff</span>}
-                    {user.is_superuser && <span className="tag is-warning">Super User</span>}
-                  </div>
-                </td>
-                <td>
-                  <span className="tag is-light">{getGroupNames(user.groups)}</span>
+                  {user.is_superuser ? (
+                    <span className="tag is-info">Avaliador</span>
+                  ) : (
+                    <span className="tag is-warning">Empresa</span>
+                  )}
                 </td>
                 <td>
                   <div className="buttons">

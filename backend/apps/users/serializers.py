@@ -41,7 +41,7 @@ class UserSerializer(serializers.ModelSerializer):
 class UserUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['username', 'email', 'first_name', 'last_name', 'is_active']
+        fields = ['username', 'email', 'first_name', 'last_name', 'is_active', 'is_superuser']
         
     def validate_username(self, value):
         if User.objects.filter(username=value).exclude(id=self.instance.id).exists():
@@ -52,6 +52,24 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         if value and User.objects.filter(email=value).exclude(id=self.instance.id).exists():
             raise serializers.ValidationError("Este email já está em uso.")
         return value
+    
+    def update(self, instance, validated_data):
+        """
+        Atualiza o usuário com os novos dados
+        """
+        instance.username = validated_data.get('username', instance.username)
+        instance.email = validated_data.get('email', instance.email)
+        instance.first_name = validated_data.get('first_name', instance.first_name)
+        instance.last_name = validated_data.get('last_name', instance.last_name)
+        instance.is_active = validated_data.get('is_active', instance.is_active)
+        instance.is_superuser = validated_data.get('is_superuser', instance.is_superuser)
+        
+        # Se definir como superuser, também define como staff
+        if instance.is_superuser:
+            instance.is_staff = True
+        
+        instance.save()
+        return instance
 
 class GroupSerializer(serializers.ModelSerializer):
     class Meta:
