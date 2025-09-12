@@ -2,7 +2,7 @@ import React, { useState, useContext, useEffect } from 'react';
 import moment from 'moment';
 import axios from 'axios';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faFileDownload, faEdit, faTimes } from '@fortawesome/free-solid-svg-icons';
+import { faFileDownload, faEdit, faTimes, faSpinner } from '@fortawesome/free-solid-svg-icons';
 import { AuthContext } from '../context/AuthContext';
 import Message from './Message';
 
@@ -11,6 +11,7 @@ const AnswerList = ({ questions, fetchEvaluationDetails }) => {
   const [selectedAnswers, setSelectedAnswers] = useState({});
   const [notes, setNotes] = useState({});
   const [isEditing, setIsEditing] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState({}); // Estado de carregamento por questão
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('success');
   const [activeTab, setActiveTab] = useState('');  // Estado para a tab ativa
@@ -30,16 +31,20 @@ const AnswerList = ({ questions, fetchEvaluationDetails }) => {
     const firstCategory = Object.keys(groupedQuestions)[0];
     setActiveTab(firstCategory);
 
-    // Inicializa o estado de notes e isEditing com as respostas existentes
+    // Inicializa o estado de notes, isEditing e selectedAnswers com as respostas existentes
     const initialNotes = {};
     const initialIsEditing = {};
+    const initialSelectedAnswers = {};
     questions.forEach(question => {
-      const answer = question.answer || {};  // Garantir que `answer` sempre seja um objeto
+      const answer = question.answer || {};
       initialNotes[question.id] = answer.note || '';
-      initialIsEditing[question.id] = false;  // Inicia com false (não está em edição)
+      initialIsEditing[question.id] = false;
+      // Inicializa com a resposta atual do avaliador se existir
+      initialSelectedAnswers[question.id] = answer.answer_evaluator || '';
     });
     setNotes(initialNotes);
     setIsEditing(initialIsEditing);
+    setSelectedAnswers(initialSelectedAnswers);
   }, [questions]);
   
   const ANSWER_CHOICES_MAP = {
@@ -64,6 +69,16 @@ const AnswerList = ({ questions, fetchEvaluationDetails }) => {
   };
 
   const toggleEdit = (questionId) => {
+    // Ao entrar no modo de edição, preserva a resposta atual do avaliador
+    if (!isEditing[questionId]) {
+      const question = questions.find(q => q.id === questionId);
+      const currentAnswer = question?.answer?.answer_evaluator || '';
+      setSelectedAnswers(prev => ({
+        ...prev,
+        [questionId]: currentAnswer
+      }));
+    }
+    
     setIsEditing({
       ...isEditing,
       [questionId]: !isEditing[questionId],  // Alterna entre true e false
@@ -72,11 +87,13 @@ const AnswerList = ({ questions, fetchEvaluationDetails }) => {
 
   const handleSave = async (questionId, answerId) => {
     const selectedAnswer = selectedAnswers[questionId];
-    const note = notes[questionId] || '';  // Note pode ser vazio se não houver texto
+    const note = notes[questionId] || '';
     if (!selectedAnswer) {
       alert('Por favor, selecione uma resposta antes de salvar.');
       return;
     }
+
+    setIsSubmitting(prev => ({ ...prev, [questionId]: true })); // Inicia carregamento para esta questão
 
     try {
       const token = getToken();
@@ -93,13 +110,27 @@ const AnswerList = ({ questions, fetchEvaluationDetails }) => {
 
       setMessage('Resposta enviada com sucesso!');
       setMessageType('success');
-      toggleEdit(questionId);  // Fecha o modo de edição após salvar
+      
+      // Recarrega os dados da avaliação para obter as perguntas atualizadas
+      try {
+        await fetchEvaluationDetails();
+        toggleEdit(questionId); // Fecha o modo de edição apenas após o reload bem-sucedido
+        console.log('Dados recarregados com sucesso após salvar a resposta.');
+        // Limpa os campos selecionados após o reload bem-sucedido
+        setSelectedAnswers((prev) => ({ ...prev, [questionId]: '' }));
+      } catch (fetchError) {
+        console.error('Erro ao recarregar dados:', fetchError);
+        setMessage('Resposta salva, mas houve um erro ao atualizar a lista. Recarregue a página.');
+        setMessageType('warning');
+      }
+      
     } catch (error) {
       console.error('Erro ao salvar a resposta:', error);
       setMessage('Erro ao salvar a resposta. Por favor, tente novamente.');
       setMessageType('danger');
+    } finally {
+      setIsSubmitting(prev => ({ ...prev, [questionId]: false })); // Finaliza carregamento
     }
-    fetchEvaluationDetails();  // Recarrega os dados após salvar
   };
 
   const handleDownload = async (answerId, fileName) => {
@@ -225,7 +256,7 @@ const AnswerList = ({ questions, fetchEvaluationDetails }) => {
                         <div className="select is-fullwidth">
                           <select
                             onChange={(e) => handleSelectChange(question.id, e.target.value)}
-                            value={selectedAnswers[question.id] || ''}
+                            value={selectedAnswers[question.id] || answer.answer_evaluator || ''}
                           >
                             <option value="" disabled>Selecione uma resposta</option>
                             {Object.entries(ANSWER_CHOICES_MAP).map(([value, { label }]) => (
@@ -251,8 +282,13 @@ const AnswerList = ({ questions, fetchEvaluationDetails }) => {
                           <button
                             className="button is-primary mt-2"
                             onClick={() => handleSave(question.id, answer.id)}
+                            disabled={isSubmitting[question.id]} // Desabilita durante carregamento
                           >
-                            Salvar
+                            {isSubmitting[question.id] ? (
+                              <FontAwesomeIcon icon={faSpinner} spin />
+                            ) : (
+                              'Salvar'
+                            )}
                           </button>
                         )}
                       </>

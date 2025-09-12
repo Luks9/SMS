@@ -1,8 +1,13 @@
-import React from "react";
-import { useIsAuthenticated } from "@azure/msal-react";
+import React, { useContext } from "react";
 import { Navigate } from "react-router-dom";
+import { AuthContext } from '../context/AuthContext';
 
 export const ProtectedRoute = ({ children }) => {
-  const isAuthenticated = useIsAuthenticated();
-  return isAuthenticated ? children : <Navigate to="/login" />;
+  const { user, isLoading } = useContext(AuthContext);
+
+  if (isLoading) {
+    return <div>Carregando...</div>;
+  }
+
+  return user ? children : <Navigate to="/login" replace />;
 };

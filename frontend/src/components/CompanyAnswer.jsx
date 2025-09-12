@@ -100,13 +100,23 @@ const CompanyAnswer = () => {
   
       setMessage(answerId ? 'Resposta atualizada com sucesso!' : 'Resposta criada com sucesso!');
       setMessageType('success');
-      await fetchQuestions();  // Aguarda a conclusão do fetchQuestions
+      
+      // Recarrega a lista de perguntas para obter os dados atualizados
+      try {
+        await fetchQuestions();
+      } catch (fetchError) {
+        console.error('Erro ao recarregar perguntas:', fetchError);
+        setMessage('Resposta salva, mas houve um erro ao atualizar a lista. Recarregue a página.');
+        setMessageType('warning');
+      }
   
+      // Limpa os campos apenas após o reload bem-sucedido
       setSelectedAnswers((prev) => ({ ...prev, [questionId]: '' }));
       setSelectedFiles((prev) => ({ ...prev, [questionId]: null }));
       setFileNames((prev) => ({ ...prev, [questionId]: '' }));
   
-      toggleEdit(questionId);
+      // Fecha o modo de edição
+      setIsEditing((prev) => ({ ...prev, [questionId]: false }));
   
     } catch (error) {
       console.error('Erro ao salvar a resposta:', error);

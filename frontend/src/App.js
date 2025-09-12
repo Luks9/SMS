@@ -1,6 +1,6 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { AdminRoute, EmpresaRoute, PrivateRoute } from './components/PrivateRoute';
+import { AdminRoute, EmpresaRoute } from './components/PrivateRoute';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { ThemeProvider } from './context/ThemeContext';
 
@@ -210,11 +210,7 @@ const App = () => {
         {/* Rota padrão - Redirecionamento baseado na autenticação */}
         <Route
           path="/"
-          element={
-            <PrivateRoute>
-              <Navigate to="/login" replace />
-            </PrivateRoute>
-          }
+          element={<Navigate to="/login" replace />}
         />
       </Routes>
     </ThemeProvider>
