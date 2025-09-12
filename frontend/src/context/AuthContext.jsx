@@ -14,30 +14,39 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const savedUser = JSON.parse(localStorage.getItem('user'));
+    const savedToken = localStorage.getItem('token');
 
-    if (savedUser && token) {
+    if (savedUser && savedToken) {
       setUser(savedUser);
-      verifyAndRefreshToken().finally(() => setIsLoading(false)); // Finaliza carregamento após verificação
-    }else{
-      setIsLoading(false); // Finaliza carregamento se não houver usuário ou token
-
+      setToken(savedToken);
+      // Não chama verifyAndRefreshToken no carregamento inicial para evitar logout desnecessário
     }
+    setIsLoading(false);
   }, []); 
 
   const verifyAndRefreshToken = async () => {
     try {
-      const response = await axios.post('/api/users/token/refresh/');
-      const newAccessToken = response.data.access; // Novo token de acesso
+      const refreshToken = localStorage.getItem('refreshToken');
+      if (!refreshToken) {
+        logout();
+        return;
+      }
+
+      const response = await axios.post('/api/users/token/refresh/', {
+        refresh: refreshToken
+      });
+      
+      const newAccessToken = response.data.access;
 
       if (newAccessToken) {
         setToken(newAccessToken);
-        localStorage.setItem('token', newAccessToken); // Armazena o novo token
+        localStorage.setItem('token', newAccessToken);
       } else {
         logout();
       }
     } catch (error) {
       console.error('Erro ao renovar o token:', error);
-      logout(); // Se ocorrer erro, faça logout
+      logout();
     }
   };
 
@@ -50,26 +59,30 @@ export const AuthProvider = ({ children }) => {
       });
       const loggedUser = response.data.user;
       const token = response.data.token;
+      const refreshToken = response.data.refresh; // Armazena também o refresh token
 
       setUser(loggedUser);
       setToken(token);
       localStorage.setItem('user', JSON.stringify(loggedUser));
       localStorage.setItem('token', token);
+      if (refreshToken) {
+        localStorage.setItem('refreshToken', refreshToken);
+      }
 
-      setMessage('Login realizado com sucesso!'); // Mensagem de sucesso
+      setMessage('Login realizado com sucesso!');
       
       // Verifica o tipo de usuário e salva no localStorage
       if (loggedUser.company === null) {
         localStorage.setItem('userType', 'admin');
-        navigate('/admin-dashboard'); // Redireciona para o dashboard do administrador
+        navigate('/admin-dashboard');
       } else {
         localStorage.setItem('userType', 'empresa');
         localStorage.setItem('companyId', loggedUser.company.id);
-        navigate('/empresa-dashboard'); // Redireciona para o dashboard da empresa
+        navigate('/empresa-dashboard');
       }
     } catch (error) {
       console.error('Login falhou', error);
-      setMessage('Falha no login. Verifique suas credenciais.'); // Mensagem de erro
+      setMessage('Falha no login. Verifique suas credenciais.');
     }
   };
 
@@ -78,6 +91,7 @@ export const AuthProvider = ({ children }) => {
     setToken(null);
     localStorage.removeItem('user');
     localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
     localStorage.removeItem('userType');
     localStorage.removeItem('companyId');
     navigate('/login');
