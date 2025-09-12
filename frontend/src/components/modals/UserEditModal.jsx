@@ -20,6 +20,7 @@ const UserEditModal = ({ user, groups, isOpen, onClose, onSave, onManageGroups }
         last_name: user.last_name || '',
         email: user.email || '',
         is_active: user.is_active || false,
+        is_superuser: user.is_superuser || false,
         username: user.username || ''
       });
       
@@ -163,6 +164,24 @@ const UserEditModal = ({ user, groups, isOpen, onClose, onSave, onManageGroups }
                   Ativo
                 </label>
               </div>
+            </div>
+
+            <div className="field">
+              <label className="label">Permissões</label>
+              <div className="control">
+                <label className="checkbox">
+                  <input
+                    type="checkbox"
+                    name="is_superuser"
+                    checked={formData.is_superuser}
+                    onChange={handleInputChange}
+                  />
+                  Avaliador
+                </label>
+              </div>
+              <p className="help is-info">
+                Avaliadores têm acesso completo ao sistema
+              </p>
             </div>
 
             <div className="field">
