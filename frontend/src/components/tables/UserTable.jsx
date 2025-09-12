@@ -67,9 +67,11 @@ const UserTable = ({ users, groups, loading, onEdit, count, currentPage, fetchUs
                   </span>
                 </td>
                 <td>
-                  <div className="tags">
-                    {user.is_superuser && <span className="tag is-warning">Super User</span>}
-                  </div>
+                  {user.is_superuser ? (
+                    <span className="tag is-info">Avaliador</span>
+                  ) : (
+                    <span className="tag is-warning">Empresa</span>
+                  )}
                 </td>
                 <td>
                   <div className="buttons">
