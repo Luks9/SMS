@@ -149,7 +149,7 @@ class EvaluationViewSet(viewsets.ModelViewSet):
         queryset = Evaluation.objects.all()
         # Obtém o parâmetro `is_active` da URL
         is_active = self.request.query_params.get('is_active', None)
-
+        
         # Se o parâmetro `is_active` for passado na URL, filtra com base no valor
         if is_active is not None:
             # Convertendo o valor do parâmetro para booleano
@@ -158,7 +158,7 @@ class EvaluationViewSet(viewsets.ModelViewSet):
             elif is_active.lower() == 'false':
                 queryset = queryset.filter(is_active=False)
 
-        queryset = queryset.order_by('-period')
+        queryset = queryset.order_by('-period', '-id')  # Adicione '-id' para garantir ordenação estável
 
         return queryset
 
