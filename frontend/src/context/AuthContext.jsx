@@ -1,30 +1,75 @@
-import React, { createContext, useState, useEffect } from 'react';
+import React, {
+  createContext,
+  useState,
+  useEffect,
+  useCallback,
+} from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import usePoleContext from './usePoles';
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('token') || null);
-  const [isLoading, setIsLoading] = useState(true); // Adiciona estado de carregamento
-  const [message, setMessage] = useState(null); // Estado para mensagens de status
+  const [isLoading, setIsLoading] = useState(true);
+  const [message, setMessage] = useState(null);
+
+  const {
+    poles,
+    setPoles,
+    selectedPole,
+    selectedPoleId,
+    setActivePole,
+    loadUserPoles,
+    userRef,
+    tokenRef,
+  } = usePoleContext({ initialPoleId: null });
 
   const navigate = useNavigate();
 
   useEffect(() => {
-    const savedUser = JSON.parse(localStorage.getItem('user'));
+    userRef.current = user;
+  }, [user, userRef]);
+
+  useEffect(() => {
+    tokenRef.current = token;
+  }, [token, tokenRef]);
+
+  useEffect(() => {
+    const savedUserRaw = localStorage.getItem('user');
+    const savedUser = savedUserRaw ? JSON.parse(savedUserRaw) : null;
     const savedToken = localStorage.getItem('token');
 
     if (savedUser && savedToken) {
       setUser(savedUser);
       setToken(savedToken);
-      // Não chama verifyAndRefreshToken no carregamento inicial para evitar logout desnecessário
+      axios.defaults.headers.common.Authorization = `Bearer ${savedToken}`;
+      loadUserPoles(savedToken, savedUser);
     }
-    setIsLoading(false);
-  }, []); 
 
-  const verifyAndRefreshToken = async () => {
+    setIsLoading(false);
+  }, [loadUserPoles]);
+
+  useEffect(() => {
+    if (token) {
+      axios.defaults.headers.common.Authorization = `Bearer ${token}`;
+    } else {
+      delete axios.defaults.headers.common.Authorization;
+    }
+  }, [token]);
+
+  useEffect(() => {
+    if (user?.is_superuser) {
+      loadUserPoles();
+    } else if (user && !user.is_superuser) {
+      setPoles([]);
+      setActivePole(null);
+    }
+  }, [user?.is_superuser, loadUserPoles, setActivePole, setPoles, user]);
+
+  const verifyAndRefreshToken = useCallback(async () => {
     try {
       const refreshToken = localStorage.getItem('refreshToken');
       if (!refreshToken) {
@@ -33,9 +78,9 @@ export const AuthProvider = ({ children }) => {
       }
 
       const response = await axios.post('/api/users/token/refresh/', {
-        refresh: refreshToken
+        refresh: refreshToken,
       });
-      
+
       const newAccessToken = response.data.access;
 
       if (newAccessToken) {
@@ -48,60 +93,91 @@ export const AuthProvider = ({ children }) => {
       console.error('Erro ao renovar o token:', error);
       logout();
     }
-  };
+  }, []);
 
- const login = async (accessToken) => {
-    try {
-      const response = await axios.post('/api/users/login/',  null, { 
-        headers: {
-          Authorization: `Bearer ${accessToken}`
+  const login = useCallback(
+    async (accessToken) => {
+      try {
+        const response = await axios.post('/api/users/login/', null, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
+
+        const loggedUser = response.data.user;
+        const tokenResponse = response.data.token;
+        const refreshToken = response.data.refresh;
+
+        setUser(loggedUser);
+        setToken(tokenResponse);
+        axios.defaults.headers.common.Authorization = `Bearer ${tokenResponse}`;
+        localStorage.setItem('user', JSON.stringify(loggedUser));
+        localStorage.setItem('token', tokenResponse);
+        if (refreshToken) {
+          localStorage.setItem('refreshToken', refreshToken);
         }
-      });
-      const loggedUser = response.data.user;
-      const token = response.data.token;
-      const refreshToken = response.data.refresh; // Armazena também o refresh token
 
-      setUser(loggedUser);
-      setToken(token);
-      localStorage.setItem('user', JSON.stringify(loggedUser));
-      localStorage.setItem('token', token);
-      if (refreshToken) {
-        localStorage.setItem('refreshToken', refreshToken);
+        setMessage('Login realizado com sucesso!');
+
+        if (loggedUser.is_superuser) {
+          localStorage.setItem('userType', 'admin');
+          localStorage.removeItem('companyId');
+          await loadUserPoles(tokenResponse, loggedUser);
+          navigate('/admin-dashboard');
+        } else if (loggedUser.company) {
+          localStorage.setItem('userType', 'empresa');
+          localStorage.setItem('companyId', loggedUser.company.id);
+          setPoles([]);
+          setActivePole(null);
+          navigate('/empresa-dashboard');
+        } else {
+          localStorage.setItem('userType', 'empresa');
+          localStorage.removeItem('companyId');
+          setPoles([]);
+          setActivePole(null);
+          navigate('/empresa-dashboard');
+        }
+      } catch (error) {
+        console.error('Login falhou', error);
+        setMessage('Falha no login. Verifique suas credenciais.');
       }
+    },
+    [loadUserPoles, navigate, setActivePole, setPoles]
+  );
 
-      setMessage('Login realizado com sucesso!');
-      
-      // Verifica o tipo de usuário e salva no localStorage
-      if (loggedUser.company === null) {
-        localStorage.setItem('userType', 'admin');
-        navigate('/admin-dashboard');
-      } else {
-        localStorage.setItem('userType', 'empresa');
-        localStorage.setItem('companyId', loggedUser.company.id);
-        navigate('/empresa-dashboard');
-      }
-    } catch (error) {
-      console.error('Login falhou', error);
-      setMessage('Falha no login. Verifique suas credenciais.');
-    }
-  };
-
-  const logout = () => {
+  const logout = useCallback(() => {
     setUser(null);
     setToken(null);
+    setPoles([]);
+    setActivePole(null);
     localStorage.removeItem('user');
     localStorage.removeItem('token');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('userType');
     localStorage.removeItem('companyId');
     navigate('/login');
-  };
+  }, [navigate, setActivePole, setPoles]);
 
-  // Função para obter o token de forma segura
   const getToken = () => token;
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, getToken, isLoading, message, setMessage }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        login,
+        logout,
+        getToken,
+        isLoading,
+        message,
+        setMessage,
+        verifyAndRefreshToken,
+        poles,
+        selectedPole,
+        selectedPoleId,
+        setActivePole,
+        refreshPoles: loadUserPoles,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

@@ -1,5 +1,6 @@
 #apps/core/views.py
 from rest_framework import viewsets, status
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse, OpenApiTypes
@@ -7,7 +8,7 @@ import os
 from apps.users.utils.permissions import user_has_access_to_company
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404
-from .models import Company, CategoryQuestion, Question, Form, Answer, Subcategory, Evaluation, ActionPlan
+from .models import Company, CategoryQuestion, Question, Form, Answer, Subcategory, Evaluation, ActionPlan, Polo
 from .serializers import (
     CompanySerializer, 
     CategoryQuestionSerializer, 
@@ -20,6 +21,7 @@ from .serializers import (
     EvaluationProgressSerializer,
     ActionPlanSerializer,
     ScoreResponseSerializer,
+    PoloSerializer
 )
 from rest_framework.pagination import PageNumberPagination
 
@@ -35,11 +37,40 @@ class CompanyViewSet(viewsets.ModelViewSet):
     serializer_class = CompanySerializer
     pagination_class = StandardResultsSetPagination
 
+    def create(self, request, *args, **kwargs):
+        """
+        Override create to automatically associate company with polo from header
+        """
+        pole_id = request.headers.get('X-Polo-Id')
+        
+        # Create the company first
+        response = super().create(request, *args, **kwargs)
+        
+        # If company was created successfully and polo_id is provided
+        if response.status_code == status.HTTP_201_CREATED and pole_id:
+            try:
+                polo = Polo.objects.get(id=pole_id, is_active=True)
+                company = Company.objects.get(id=response.data['id'])
+                polo.companies.add(company)
+                polo.save()
+            except Polo.DoesNotExist:
+                # Polo doesn't exist or is inactive - log or handle as needed
+                pass
+            except Exception:
+                # Handle any other errors silently
+                pass
+        
+        return response
+
     def get_queryset(self):
         """
         Override get_queryset to add ordering and any future filtering
         """
-        return Company.objects.all().order_by('name')
+        queryset = Company.objects.all().order_by('name')
+        pole_id = self.request.headers.get('X-Polo-Id')
+        if self.request.user.is_superuser and pole_id:
+            queryset = queryset.filter(poles__id=pole_id)
+        return queryset
 
     @extend_schema(
         description="Retorna todas as empresas sem paginação",
@@ -49,8 +80,14 @@ class CompanyViewSet(viewsets.ModelViewSet):
     def all_companies(self, request):
         """
         Endpoint para retornar todas as empresas sem paginação
-        """
-        companies = Company.objects.all().order_by('name')
+        """ 
+        pole_id = self.request.headers.get('X-Polo-Id')
+        
+        if self.request.user.is_superuser and pole_id:
+            companies = Company.objects.filter(poles__id=pole_id).order_by('name')
+        else:
+            companies = Company.objects.all().order_by('name')
+            
         serializer = CompanySerializer(companies, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -143,24 +180,18 @@ class EvaluationViewSet(viewsets.ModelViewSet):
     
 
     def get_queryset(self):
-        """
-        Sobrescreve o método get_queryset para filtrar as avaliações com base no parâmetro is_active.
-        """
         queryset = Evaluation.objects.all()
-        # Obtém o parâmetro `is_active` da URL
-        is_active = self.request.query_params.get('is_active', None)
-        
-        # Se o parâmetro `is_active` for passado na URL, filtra com base no valor
-        if is_active is not None:
-            # Convertendo o valor do parâmetro para booleano
-            if is_active.lower() == 'true':
-                queryset = queryset.filter(is_active=True)
-            elif is_active.lower() == 'false':
-                queryset = queryset.filter(is_active=False)
+        is_active = self.request.query_params.get('is_active')
+        pole_id = self.request.headers.get('X-Polo-Id')
 
-        queryset = queryset.order_by('-period', '-id')  # Adicione '-id' para garantir ordenação estável
+        if self.request.user.is_superuser and pole_id:
+            queryset = queryset.filter(company__poles__id=pole_id)
 
-        return queryset
+            if is_active is not None:
+                is_active_bool = is_active.lower() == 'true'
+                queryset = queryset.filter(is_active=is_active_bool)
+
+        return queryset.order_by('-period', '-id')
 
 
     @extend_schema(
@@ -295,3 +326,37 @@ class ActionPlanViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(action_plans, many=True)
  
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    def get_queryset(self):
+        queryset = ActionPlan.objects.all()
+        pole_id = self.request.headers.get('X-Polo-Id')
+        if self.request.user.is_superuser and pole_id:
+            queryset = queryset.filter(company__poles__id=pole_id)
+        return queryset
+
+
+@extend_schema(tags=["Polos"])
+class PoloViewSet(viewsets.ModelViewSet):
+    queryset = Polo.objects.all().prefetch_related('companies', 'superusers')
+    serializer_class = PoloSerializer
+    permission_classes = [IsAuthenticated]
+    pagination_class = StandardResultsSetPagination
+
+    def get_queryset(self):
+        queryset = super().get_queryset().order_by('name')
+        if self.request.user.is_superuser:
+            return queryset
+        return queryset.filter(superusers=self.request.user)
+    
+    @extend_schema(
+        description='Retorna os polos associados ao usuário autenticado.',
+        responses={200: PoloSerializer(many=True)}
+    )
+    @action(detail=False, methods=['get'], url_path='my-poles')
+    def my_poles(self, request):
+        poles = Polo.objects.filter(
+            superusers=request.user,
+            is_active=True
+        ).order_by('name')
+        serializer = self.get_serializer(poles, many=True)
+        return Response(serializer.data)

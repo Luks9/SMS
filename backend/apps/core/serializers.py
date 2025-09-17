@@ -2,7 +2,8 @@
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
-from .models import Company, CategoryQuestion, Question, Form, Answer, Subcategory, Evaluation, ActionPlan
+from .models import Company, CategoryQuestion, Question, Form, Answer, Subcategory, Evaluation, ActionPlan, Polo
+from .utils import format_cnpj_display
 
 
 class ScoreResponseSerializer(serializers.Serializer):
@@ -13,9 +14,25 @@ class ScoreResponseSerializer(serializers.Serializer):
 
 
 class CompanySerializer(serializers.ModelSerializer):
+    cnpj_display = serializers.SerializerMethodField()
+    
     class Meta:
         model = Company
         fields = '__all__'
+    
+    def get_cnpj_display(self, obj):
+        """
+        Retorna o CNPJ formatado para exibição
+        """
+        return format_cnpj_display(obj.cnpj)
+    
+    def to_representation(self, instance):
+        """
+        Customiza a representação para mostrar o CNPJ formatado
+        """
+        data = super().to_representation(instance)
+        data['cnpj'] = format_cnpj_display(instance.cnpj)
+        return data
 
 class CategoryQuestionSerializer(serializers.ModelSerializer):
     class Meta:
@@ -299,3 +316,19 @@ class ActionPlanSerializer(serializers.ModelSerializer):
         
         instance.save()
         return instance
+    
+
+class PoloSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Polo
+        fields = [
+            "id",
+            "name",
+            "description",
+            "companies",
+            "superusers",
+            "is_active",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ("created_at", "updated_at")
