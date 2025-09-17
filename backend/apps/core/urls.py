@@ -11,6 +11,7 @@ from .views import (
     EvaluationViewSet,
     ActionPlanViewSet,
     download_attachment_respondent,
+    PoloViewSet
 )
 
 # Criação do router para as views automáticas do DRF
@@ -23,6 +24,8 @@ router.register(r'forms', FormViewSet)
 router.register(r'evaluation', EvaluationViewSet)
 router.register(r'answers', AnswerViewSet)
 router.register(r'action-plans', ActionPlanViewSet)
+router.register(r"poles", PoloViewSet)
+
 
 # Combinação de URLs do router com a nova rota customizada
 urlpatterns = [

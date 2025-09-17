@@ -5,6 +5,7 @@ from django.db import models
 from django.utils import timezone
 import os
 import uuid
+from .utils import format_cnpj
 
 def rename_attachment_respondent(instance, filename):
     ext = filename.split('.')[-1]
@@ -19,7 +20,7 @@ def rename_attachment_evaluator(instance, filename):
 
 class Company(models.Model):
     name = models.CharField(max_length=255)
-    cnpj = models.CharField(max_length=18, unique=True)
+    cnpj = models.CharField(max_length=18, unique=False)
     is_active = models.BooleanField(default=True)
     user = models.ForeignKey(User, on_delete=models.PROTECT, related_name='companies', null=True)  # Relacionando Company a User
     dominio = models.CharField(max_length=255, blank=True)
@@ -27,6 +28,12 @@ class Company(models.Model):
     class Meta:
         verbose_name = "Empresa"
         verbose_name_plural = "Empresas"
+
+    def save(self, *args, **kwargs):
+        # Limpar o CNPJ antes de salvar (manter apenas números)
+        if self.cnpj:
+            self.cnpj = format_cnpj(self.cnpj)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.name
@@ -172,3 +179,30 @@ class ActionPlan(models.Model):
 
     def __str__(self):
         return f"Action Plan for {self.company.name} - Evaluation {self.evaluation.id}"
+
+class Polo(models.Model):
+    name = models.CharField("Nome do Polo", max_length=255, unique=True)
+    description = models.TextField("Descrição", blank=True)
+    companies = models.ManyToManyField(Company, related_name="poles", blank=True)
+    superusers = models.ManyToManyField(
+        User,
+        related_name="managed_poles",
+        blank=True,
+        limit_choices_to={"is_superuser": True},
+    )
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Polo"
+        verbose_name_plural = "Polos"
+        ordering = ("name",)
+
+    def __str__(self):
+        return self.name
+
+    def add_superuser(self, user):
+        if not user.is_superuser:
+            raise ValueError("Apenas superusuários podem ser vinculados ao Polo.")
+        self.superusers.add(user)

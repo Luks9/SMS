@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import useFetchCompany from '../../hooks/useFetchCompany';
 
 const UserEditModal = ({ user, groups, isOpen, onClose, onSave, onManageGroups }) => {
   const [formData, setFormData] = useState({
@@ -6,12 +7,16 @@ const UserEditModal = ({ user, groups, isOpen, onClose, onSave, onManageGroups }
     last_name: '',
     email: '',
     is_active: true,
-    username: ''
+    username: '',
+    company_id: ''
   });
 
   const [selectedGroups, setSelectedGroups] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  
+  // Fetch companies for selection
+  const { companies, loading: companiesLoading } = useFetchCompany();
 
   useEffect(() => {
     if (user) {
@@ -21,7 +26,8 @@ const UserEditModal = ({ user, groups, isOpen, onClose, onSave, onManageGroups }
         email: user.email || '',
         is_active: user.is_active || false,
         is_superuser: user.is_superuser || false,
-        username: user.username || ''
+        username: user.username || '',
+        company_id: user.company?.id || ''
       });
       
       // Extrair nomes dos grupos do usuário e encontrar os IDs correspondentes
@@ -61,8 +67,14 @@ const UserEditModal = ({ user, groups, isOpen, onClose, onSave, onManageGroups }
     setError(null);
 
     try {     
+      // Include company_id in the form data
+      const updateData = { ...formData };
+      if (!formData.is_superuser && formData.company_id) {
+        updateData.company_id = formData.company_id;
+      }
+      
       // Atualizar dados do usuário
-      await onSave(user.id, formData);
+      await onSave(user.id, updateData);
       
       // Gerenciar grupos do usuário
       if (onManageGroups) {
@@ -174,7 +186,13 @@ const UserEditModal = ({ user, groups, isOpen, onClose, onSave, onManageGroups }
                     type="checkbox"
                     name="is_superuser"
                     checked={formData.is_superuser}
-                    onChange={handleInputChange}
+                    onChange={(e) => {
+                      handleInputChange(e);
+                      // Clear company selection when becoming superuser
+                      if (e.target.checked) {
+                        setFormData(prev => ({ ...prev, company_id: '' }));
+                      }
+                    }}
                   />
                   Avaliador
                 </label>
@@ -183,6 +201,29 @@ const UserEditModal = ({ user, groups, isOpen, onClose, onSave, onManageGroups }
                 Avaliadores têm acesso completo ao sistema
               </p>
             </div>
+
+            {/* Company selection - only for non-superusers */}
+            {!formData.is_superuser && (
+              <div className="field">
+                <label className="label">Empresa</label>
+                <div className="control">
+                  <div className={`select is-fullwidth ${companiesLoading ? 'is-loading' : ''}`}>
+                    <select
+                      name="company_id"
+                      value={formData.company_id}
+                      onChange={handleInputChange}
+                    >
+                      <option value="">Selecione uma empresa</option>
+                      {companies.map(company => (
+                        <option key={company.id} value={company.id}>
+                          {company.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="field">
               <label className="label">Grupos</label>

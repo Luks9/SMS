@@ -165,6 +165,23 @@ class UserUpdateView(APIView):
         serializer = UserUpdateSerializer(user, data=request.data, partial=True)
         
         if serializer.is_valid():
+            # Handle company association
+            company_id = request.data.get('company_id')
+            if company_id and not user.is_superuser:
+                from apps.core.models import Company
+                try:
+                    company = Company.objects.get(id=company_id)
+                    user.companies.clear()  # Remove existing company associations
+                    user.companies.add(company)
+                except Company.DoesNotExist:
+                    return Response(
+                        {'error': 'Empresa não encontrada'}, 
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            elif user.is_superuser:
+                # Superusers shouldn't have company associations
+                user.companies.clear()
+            
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
         

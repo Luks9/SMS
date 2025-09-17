@@ -6,7 +6,8 @@ from django.contrib.auth.models import User
 from .models import (
     Subcategory, 
     CategoryQuestion,
-    Company
+    Company,
+    Polo
 )
 
 admin.site.site_header = "SMS Administração"
@@ -54,6 +55,15 @@ class UserAdmin(BaseUserAdmin):
         if not obj:
             return []
         return super(UserAdmin, self).get_inline_instances(request, obj)
+
+
+@admin.register(Polo)
+class PoloAdmin(admin.ModelAdmin):
+    list_display = ("name", "is_active", "created_at", "updated_at")
+    list_filter = ("is_active",)
+    search_fields = ("name", "description")
+    filter_horizontal = ("companies", "superusers")
+
 
 # Re-register UserAdmin para incluir a nova configuração
 admin.site.unregister(User)

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-const CompanyEditModal = ({ company, users, isOpen, onClose, onSave, onCreate }) => {
+const CompanyEditModal = ({ company, isOpen, onClose, onSave, onCreate }) => {
   const [formData, setFormData] = useState({
     name: '',
     cnpj: '',
@@ -55,12 +55,36 @@ const CompanyEditModal = ({ company, users, isOpen, onClose, onSave, onCreate })
     onClose();
   };
 
+  const formatCNPJ = (value) => {
+    // Remove todos os caracteres não numéricos
+    const numbers = value.replace(/[^0-9]/g, '');
+    
+    // Limita a 14 dígitos
+    const limitedNumbers = numbers.slice(0, 14);
+    
+    // Aplica a formatação XX.XXX.XXX/XXXX-XX
+    if (limitedNumbers.length <= 2) return limitedNumbers;
+    if (limitedNumbers.length <= 5) return `${limitedNumbers.slice(0, 2)}.${limitedNumbers.slice(2)}`;
+    if (limitedNumbers.length <= 8) return `${limitedNumbers.slice(0, 2)}.${limitedNumbers.slice(2, 5)}.${limitedNumbers.slice(5)}`;
+    if (limitedNumbers.length <= 12) return `${limitedNumbers.slice(0, 2)}.${limitedNumbers.slice(2, 5)}.${limitedNumbers.slice(5, 8)}/${limitedNumbers.slice(8)}`;
+    return `${limitedNumbers.slice(0, 2)}.${limitedNumbers.slice(2, 5)}.${limitedNumbers.slice(5, 8)}/${limitedNumbers.slice(8, 12)}-${limitedNumbers.slice(12)}`;
+  };
+
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
+    
+    if (name === 'cnpj') {
+      const formattedCNPJ = formatCNPJ(value);
+      setFormData(prev => ({
+        ...prev,
+        [name]: formattedCNPJ
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: type === 'checkbox' ? checked : value
+      }));
+    }
   };
 
   if (!isOpen) return null;
@@ -100,6 +124,8 @@ const CompanyEditModal = ({ company, users, isOpen, onClose, onSave, onCreate })
                   name="cnpj"
                   value={formData.cnpj}
                   onChange={handleInputChange}
+                  placeholder="00.000.000/0000-00"
+                  maxLength="18"
                   required
                 />
               </div>
@@ -115,26 +141,6 @@ const CompanyEditModal = ({ company, users, isOpen, onClose, onSave, onCreate })
                   value={formData.dominio}
                   onChange={handleInputChange}
                 />
-              </div>
-            </div>
-
-            <div className="field">
-              <label className="label">Usuário</label>
-              <div className="control">
-                <div className="select is-fullwidth">
-                  <select
-                    name="user"
-                    value={formData.user || ''}
-                    onChange={handleInputChange}
-                  >
-                    <option value="">Selecionar usuário</option>
-                    {users.map(user => (
-                      <option key={user.id} value={user.id}>
-                        {user.first_name} {user.last_name} ({user.email})
-                      </option>
-                    ))}
-                  </select>
-                </div>
               </div>
             </div>
 
