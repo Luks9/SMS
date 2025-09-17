@@ -2,12 +2,8 @@ import React from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEdit, faCheck, faTimes, faSpinner } from '@fortawesome/free-solid-svg-icons';
 
-const UserTable = ({ users, groups, loading, onEdit, count, currentPage, fetchUsers, paginationLoading }) => {
+const UserTable = ({ users, loading, onEdit, paginationLoading }) => {
   const itemsPerPage = 3;
-
-  const getGroupNames = (userGroups) => {
-    return userGroups.join(', ');
-  };
 
   if (loading) {
     return (
@@ -50,6 +46,7 @@ const UserTable = ({ users, groups, loading, onEdit, count, currentPage, fetchUs
             <tr>
               <th>Nome</th>
               <th>Email</th>
+              <th>Empresa</th>
               <th>Status</th>
               <th>Permissões</th>
               <th>Editar</th>
@@ -60,6 +57,7 @@ const UserTable = ({ users, groups, loading, onEdit, count, currentPage, fetchUs
               <tr key={user.id}>
                 <td>{user.first_name} {user.last_name}</td>
                 <td>{user.email}</td>
+                <td>{user.is_superuser ? "-" : user.company?.name}</td>
                 <td>
                   <span className={`tag ${user.is_active ? 'is-success' : 'is-danger'}`}>
                     <FontAwesomeIcon icon={user.is_active ? faCheck : faTimes} />

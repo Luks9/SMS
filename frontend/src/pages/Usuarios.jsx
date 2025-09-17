@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import Layout from '../components/Layout';
 import UserTable from '../components/tables/UserTable';
 import CompanyTable from '../components/tables/CompanyTable';
@@ -6,8 +6,11 @@ import UserEditModal from '../components/modals/UserEditModal';
 import CompanyEditModal from '../components/modals/CompanyEditModal';
 import useFetchUsers from '../hooks/useFetchUsers';
 import useFetchCompanies from '../hooks/useFetchCompanies';
+import { AuthContext } from '../context/AuthContext';
+
 
 const Usuarios = () => {
+  const { selectedPoleId } = useContext(AuthContext);
   const { 
     users, 
     groups, 
@@ -44,6 +47,10 @@ const Usuarios = () => {
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState(null);
   const [isCompanyModalOpen, setIsCompanyModalOpen] = useState(false);
+
+  useEffect(() => {
+    fetchCompanies();
+  }, [selectedPoleId]);
 
   const handleEditUser = (user) => {
     setSelectedUser(user);
@@ -264,7 +271,6 @@ const Usuarios = () => {
         {/* Modal de Edição de Empresa */}
         <CompanyEditModal 
           company={selectedCompany}
-          users={users}
           isOpen={isCompanyModalOpen}
           onClose={handleCloseCompanyModal}
           onSave={handleSaveCompany}

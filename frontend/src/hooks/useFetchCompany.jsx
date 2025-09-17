@@ -9,7 +9,7 @@ const useFetchCompany = () => {
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Função para buscar os formulários
+  // Função para buscar as empresas
   const fetchCompanies = async () => {
     try {
       const token = getToken();
@@ -20,7 +20,7 @@ const useFetchCompany = () => {
       });
       setCompanies(response.data);
     } catch (error) {
-      console.error('Erro ao buscar formulários:', error);
+      console.error('Erro ao buscar empresas:', error);
     } finally {
       setLoading(false);
     }

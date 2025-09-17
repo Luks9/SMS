@@ -3,8 +3,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEdit, faCheck, faTimes, faTrash, faSpinner } from '@fortawesome/free-solid-svg-icons';
 import Pagination from './Pagination';
 
-const CompanyTable = ({ companies, loading, onEdit, onDelete, count, currentPage, fetchCompanies, paginationLoading }) => {
-  const itemsPerPage = 10;
+const CompanyTable = ({ companies, loading, onEdit, onDelete, paginationLoading }) => {
 
   if (loading) {
     return (
@@ -55,8 +54,7 @@ const CompanyTable = ({ companies, loading, onEdit, onDelete, count, currentPage
               <th>CNPJ</th>
               <th>Domínio</th>
               <th>Status</th>
-              <th>Usuário</th>
-              <th>Ações</th>
+              <th colSpan={2}>Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -71,7 +69,6 @@ const CompanyTable = ({ companies, loading, onEdit, onDelete, count, currentPage
                     &nbsp;{company.is_active ? 'Ativo' : 'Inativo'}
                   </span>
                 </td>
-                <td>{company.user ? company.user.username : '-'}</td>
                 <td>
                   <div className="buttons">
                     <button 
@@ -95,14 +92,6 @@ const CompanyTable = ({ companies, loading, onEdit, onDelete, count, currentPage
           </tbody>
         </table>
       </div>
-
-      <Pagination
-        totalItems={count}
-        itemsPerPage={itemsPerPage}
-        currentPage={currentPage}
-        onPageChange={(page) => fetchCompanies(page)}
-        disabled={paginationLoading}
-      />
     </div>
   );
 };
