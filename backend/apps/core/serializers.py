@@ -326,7 +326,7 @@ class PoloSerializer(serializers.ModelSerializer):
             "name",
             "description",
             "companies",
-            "superusers",
+            "users",
             "is_active",
             "created_at",
             "updated_at",

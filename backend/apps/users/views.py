@@ -7,6 +7,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from django.contrib.auth.models import User, Group
+from django.db.models import Q
 from .serializers import UserProfileSerializer, CustomLoginSerializer, UserSerializer, UserUpdateSerializer, GroupSerializer, UserGroupSerializer
 from apps.core.serializers import CompanySerializer
 from django.contrib.auth import authenticate
@@ -143,6 +144,13 @@ class UserListView(APIView):
     def get(self, request):
         pagination_class = StandardResultsSetPagination()
         users = User.objects.all()
+        pole_id = request.headers.get('X-Polo-Id')
+        if pole_id:
+            users = User.objects.filter(
+                Q(companies__poles__id=pole_id) |  # usuários de empresas do polo
+                Q(poles__id=pole_id)
+            ).distinct()
+
         paginated_users = pagination_class.paginate_queryset(users, request)
         serializer = UserSerializer(paginated_users, many=True)
         return pagination_class.get_paginated_response(serializer.data)

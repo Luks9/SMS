@@ -355,7 +355,7 @@ class PoloViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='my-poles')
     def my_poles(self, request):
         poles = Polo.objects.filter(
-            superusers=request.user,
+            users=request.user,
             is_active=True
         ).order_by('name')
         serializer = self.get_serializer(poles, many=True)

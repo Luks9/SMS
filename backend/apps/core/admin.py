@@ -62,7 +62,7 @@ class PoloAdmin(admin.ModelAdmin):
     list_display = ("name", "is_active", "created_at", "updated_at")
     list_filter = ("is_active",)
     search_fields = ("name", "description")
-    filter_horizontal = ("companies", "superusers")
+    filter_horizontal = ("companies", "users")
 
 
 # Re-register UserAdmin para incluir a nova configuração

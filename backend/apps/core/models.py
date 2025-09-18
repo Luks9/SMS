@@ -184,11 +184,10 @@ class Polo(models.Model):
     name = models.CharField("Nome do Polo", max_length=255, unique=True)
     description = models.TextField("Descrição", blank=True)
     companies = models.ManyToManyField(Company, related_name="poles", blank=True)
-    superusers = models.ManyToManyField(
+    users = models.ManyToManyField(
         User,
-        related_name="managed_poles",
+        related_name="poles",
         blank=True,
-        limit_choices_to={"is_superuser": True},
     )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -202,7 +201,6 @@ class Polo(models.Model):
     def __str__(self):
         return self.name
 
-    def add_superuser(self, user):
-        if not user.is_superuser:
-            raise ValueError("Apenas superusuários podem ser vinculados ao Polo.")
-        self.superusers.add(user)
+    def add_user(self, user):
+        self.users.add(user)
+
