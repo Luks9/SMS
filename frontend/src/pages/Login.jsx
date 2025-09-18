@@ -1,5 +1,6 @@
 import React, { useState, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
+import CompanySelectionModal from '../components/CompanySelectionModal';
 import Message from '../components/Message'; // Importa o componente Message
 import '../styles/Login.css';
 import { useMsal } from '@azure/msal-react';
@@ -14,7 +15,15 @@ const Login = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState(''); 
 
-  const { login, message, setMessage } = useContext(AuthContext);
+  const { 
+    login, 
+    message, 
+    setMessage, 
+    showCompanySelection,
+    setShowCompanySelection,
+    handleCompanySelection,
+    user
+  } = useContext(AuthContext);
 
   const handleLogin = () => {
     instance.loginPopup(loginRequest).then(response => {
@@ -27,6 +36,12 @@ const Login = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     //login(username, password);
+  };
+
+  const handleCloseCompanyModal = () => {
+    setShowCompanySelection(false);
+    // Optionally logout the user if they close without selecting
+    // logout();
   };
 
   return (
@@ -76,16 +91,29 @@ const Login = () => {
             <div className="btn-login-field">
               <label className="login-label">Login</label>
               <div className="control">
-                <button onClick={handleLogin} className="login-button is-primary" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <button 
+                  onClick={handleLogin} 
+                  className="login-button is-primary" 
+                  style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}
+                >
                   <FontAwesomeIcon icon={faMicrosoft} />
                    Login com Microsoft
                 </button>
               </div>
             </div>
           </div>
-
         </div>
       </div>
+      
+      {/* Modal de seleção de empresa */}
+      {showCompanySelection && user && user.companies && user.companies.length > 1 && (
+        <CompanySelectionModal
+          companies={user.companies}
+          user={user}
+          onSelectCompany={handleCompanySelection}
+          onClose={handleCloseCompanyModal}
+        />
+      )}
     </div>
   );
 };

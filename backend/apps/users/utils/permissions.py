@@ -3,25 +3,46 @@
 from rest_framework.response import Response
 from rest_framework import status 
 
-def user_has_access_to_company(user, company=False):
+
+def user_has_access_to_company(user, company=None):
     """
-    Verifica se o usuário é admin ou se está associado à empresa.
-    :param user: O usuário que está fazendo a requisição.
-    :param company: A empresa que está sendo acessada.
-    :return: Retorna True se o usuário for superusuário ou estiver associado à empresa.
-             Caso contrário, retorna um Response com status 403 Forbidden.
+    Verifica se um usuário tem acesso a uma empresa específica.
+    Se company for None, verifica se o usuário tem acesso a pelo menos uma empresa.
     """
-    # Verifica se o usuário é superusuário
     if user.is_superuser:
         return True
-
-    if company:
-        # Verifica se o usuário está associado à empresa
-        if hasattr(user, 'companies') and user.companies.filter(id=company.id).exists():
-            return True
-
-    # Se não for superusuário e não estiver associado, retorna um Response 403
+    
+    if company is None:
+        # Verifica se o usuário está associado a pelo menos uma empresa ativa
+        return user.companies.filter(is_active=True).exists()
+    
+    # Verifica se o usuário está associado à empresa específica
+    if user.companies.filter(id=company.id, is_active=True).exists():
+        return True
+    
     return Response(
-        {"detail": "Você não tem permissão para acessar esta informação."},
+        {"detail": "Você não tem permissão para acessar esta empresa."},
         status=status.HTTP_403_FORBIDDEN
     )
+
+
+def get_user_companies(user):
+    """
+    Retorna todas as empresas ativas associadas ao usuário.
+    Para superusers, retorna todas as empresas ativas do sistema.
+    """
+    if user.is_superuser:
+        from apps.core.models import Company
+        return Company.objects.filter(is_active=True)
+    
+    return user.companies.filter(is_active=True)
+
+
+def user_can_access_evaluation(user, evaluation):
+    """
+    Verifica se o usuário pode acessar uma avaliação específica.
+    """
+    if user.is_superuser:
+        return True
+    
+    return user.companies.filter(id=evaluation.company.id, is_active=True).exists()

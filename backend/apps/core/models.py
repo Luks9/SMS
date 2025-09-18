@@ -22,7 +22,7 @@ class Company(models.Model):
     name = models.CharField(max_length=255)
     cnpj = models.CharField(max_length=18, unique=False)
     is_active = models.BooleanField(default=True)
-    user = models.ForeignKey(User, on_delete=models.PROTECT, related_name='companies', null=True)  # Relacionando Company a User
+    users = models.ManyToManyField(User, related_name='companies', blank=True)  # Changed from ForeignKey to ManyToMany
     dominio = models.CharField(max_length=255, blank=True)
 
     class Meta:

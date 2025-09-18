@@ -30,14 +30,14 @@ class UserProfileView(APIView):
 
     def get(self, request):
         user = request.user
-        company = user.companies.first()
-        company_data = CompanySerializer(company).data if company else None
+        companies = user.companies.all() if not user.is_superuser else []
+        companies_data = CompanySerializer(companies, many=True).data
         user_data = {
             "id": user.id,
             "username": user.username,
             "email": user.email,
             'name': f'{user.first_name} {user.last_name}',
-            "company": company_data,
+            "companies": companies_data,
         }
 
         serializer = self.serializer_class(user_data)
@@ -72,9 +72,9 @@ class CustomLoginView(APIView):
                         }, status=status.HTTP_403_FORBIDDEN)
                     user = processed_user
                 
-                # Busca a empresa do usuário
-                company = user.companies.first() if not user.is_superuser else None
-                company_data = CompanySerializer(company).data if company else None
+                # Busca todas as empresas do usuário
+                companies = user.companies.all() if not user.is_superuser else []
+                companies_data = CompanySerializer(companies, many=True).data
                 
                 response_data = {
                     'token': str(token),
@@ -83,7 +83,7 @@ class CustomLoginView(APIView):
                         'username': user.username,
                         'email': user.email,
                         'name': f'{user.first_name} {user.last_name}'.strip(),
-                        'company': company_data,
+                        'companies': companies_data,
                         'is_superuser': user.is_superuser,
                         'groups': list(user.groups.values_list('name', flat=True)),
                     },
@@ -173,17 +173,21 @@ class UserUpdateView(APIView):
         serializer = UserUpdateSerializer(user, data=request.data, partial=True)
         
         if serializer.is_valid():
-            # Handle company association
-            company_id = request.data.get('company_id')
-            if company_id and not user.is_superuser:
+            # Handle companies association (multiple companies)
+            company_ids = request.data.get('company_ids', [])
+            if company_ids and not user.is_superuser:
                 from apps.core.models import Company
                 try:
-                    company = Company.objects.get(id=company_id)
-                    user.companies.clear()  # Remove existing company associations
-                    user.companies.add(company)
-                except Company.DoesNotExist:
+                    companies = Company.objects.filter(id__in=company_ids)
+                    if companies.count() != len(company_ids):
+                        return Response(
+                            {'error': 'Uma ou mais empresas não foram encontradas'}, 
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+                    user.companies.set(companies)  # Set all companies at once
+                except Exception as e:
                     return Response(
-                        {'error': 'Empresa não encontrada'}, 
+                        {'error': f'Erro ao associar empresas: {str(e)}'}, 
                         status=status.HTTP_400_BAD_REQUEST
                     )
             elif user.is_superuser:
