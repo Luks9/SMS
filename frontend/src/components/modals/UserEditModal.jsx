@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Select from 'react-select';
 import useFetchCompany from '../../hooks/useFetchCompany';
 
 const UserEditModal = ({ user, groups, isOpen, onClose, onSave, onManageGroups }) => {
@@ -8,15 +9,20 @@ const UserEditModal = ({ user, groups, isOpen, onClose, onSave, onManageGroups }
     email: '',
     is_active: true,
     username: '',
-    company_id: ''
+    is_superuser: false
   });
 
   const [selectedGroups, setSelectedGroups] = useState([]);
+  const [selectedCompanies, setSelectedCompanies] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  
-  // Fetch companies for selection
+
   const { companies, loading: companiesLoading } = useFetchCompany();
+
+  const companyOptions = companies.map(company => ({
+    value: company.id,
+    label: company.name + (company.cnpj ? ` (${company.cnpj})` : '')
+  }));
 
   useEffect(() => {
     if (user) {
@@ -26,24 +32,24 @@ const UserEditModal = ({ user, groups, isOpen, onClose, onSave, onManageGroups }
         email: user.email || '',
         is_active: user.is_active || false,
         is_superuser: user.is_superuser || false,
-        username: user.username || '',
-        company_id: user.company?.id || ''
+        username: user.username || ''
       });
-      
-      // Extrair nomes dos grupos do usuário e encontrar os IDs correspondentes
+
       const userGroups = user.groups || [];
-      const groupIds = [];
-      
-      userGroups.forEach(groupName => {
-        const group = groups.find(g => g.name === groupName);
-        if (group) {
-          groupIds.push(group.id);
-        }
-      });
-      
+      const groupIds = userGroups
+        .map(groupName => {
+          const g = groups.find(g => g.name === groupName);
+          return g ? g.id : null;
+        })
+        .filter(id => id != null);
+
       setSelectedGroups(groupIds);
+
+      const userCompanies = user.companies || [];
+      const companyIds = userCompanies.map(c => c.id);
+      setSelectedCompanies(companyIds);
     }
-  }, [user, groups]);
+  }, [user, groups, companies]);
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -51,14 +57,23 @@ const UserEditModal = ({ user, groups, isOpen, onClose, onSave, onManageGroups }
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }));
+
+    if (name === 'is_superuser' && checked) {
+      setSelectedCompanies([]);
+    }
   };
 
   const handleGroupChange = (groupId) => {
-    setSelectedGroups(prev => 
+    setSelectedGroups(prev =>
       prev.includes(groupId)
         ? prev.filter(id => id !== groupId)
         : [...prev, groupId]
     );
+  };
+
+  const handleCompanySelectChange = (selectedOptions) => {
+    const ids = selectedOptions ? selectedOptions.map(opt => opt.value) : [];
+    setSelectedCompanies(ids);
   };
 
   const handleSubmit = async (e) => {
@@ -66,21 +81,18 @@ const UserEditModal = ({ user, groups, isOpen, onClose, onSave, onManageGroups }
     setLoading(true);
     setError(null);
 
-    try {     
-      // Include company_id in the form data
+    try {
       const updateData = { ...formData };
-      if (!formData.is_superuser && formData.company_id) {
-        updateData.company_id = formData.company_id;
+      if (!formData.is_superuser && selectedCompanies.length > 0) {
+        updateData.company_ids = selectedCompanies;
       }
-      
-      // Atualizar dados do usuário
+
       await onSave(user.id, updateData);
-      
-      // Gerenciar grupos do usuário
+
       if (onManageGroups) {
         await onManageGroups(user.id, selectedGroups, 'set');
       }
-      
+
       onClose();
     } catch (err) {
       console.error('Erro ao salvar:', err);
@@ -186,13 +198,7 @@ const UserEditModal = ({ user, groups, isOpen, onClose, onSave, onManageGroups }
                     type="checkbox"
                     name="is_superuser"
                     checked={formData.is_superuser}
-                    onChange={(e) => {
-                      handleInputChange(e);
-                      // Clear company selection when becoming superuser
-                      if (e.target.checked) {
-                        setFormData(prev => ({ ...prev, company_id: '' }));
-                      }
-                    }}
+                    onChange={handleInputChange}
                   />
                   Avaliador
                 </label>
@@ -202,26 +208,28 @@ const UserEditModal = ({ user, groups, isOpen, onClose, onSave, onManageGroups }
               </p>
             </div>
 
-            {/* Company selection - only for non-superusers */}
             {!formData.is_superuser && (
               <div className="field">
-                <label className="label">Empresa</label>
+                <label className="label">Empresas</label>
                 <div className="control">
-                  <div className={`select is-fullwidth ${companiesLoading ? 'is-loading' : ''}`}>
-                    <select
-                      name="company_id"
-                      value={formData.company_id}
-                      onChange={handleInputChange}
-                    >
-                      <option value="">Selecione uma empresa</option>
-                      {companies.map(company => (
-                        <option key={company.id} value={company.id}>
-                          {company.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  {companiesLoading ? (
+                    <div className="notification is-info">Carregando empresas...</div>
+                  ) : companies.length === 0 ? (
+                    <div className="notification is-warning">Nenhuma empresa disponível</div>
+                  ) : (
+                    <Select
+                      isMulti
+                      options={companyOptions}
+                      value={companyOptions.filter(opt => selectedCompanies.includes(opt.value))}
+                      onChange={handleCompanySelectChange}
+                      placeholder="Selecione uma ou mais empresas..."
+                      closeMenuOnSelect={false}
+                    />
+                  )}
                 </div>
+                <p className="help is-info">
+                  Selecione uma ou mais empresas que este usuário pode acessar
+                </p>
               </div>
             )}
 
@@ -245,7 +253,7 @@ const UserEditModal = ({ user, groups, isOpen, onClose, onSave, onManageGroups }
           </form>
         </section>
         <footer className="modal-card-foot">
-          <button 
+          <button
             className={`button is-success ${loading ? 'is-loading' : ''}`}
             onClick={handleSubmit}
             disabled={loading}

@@ -54,30 +54,34 @@ class CustomLoginView(APIView):
         if not auth_header or not auth_header.startswith("Bearer "):
             return Response({"detail": "Token não fornecido."}, status=status.HTTP_401_UNAUTHORIZED)
 
-        token = auth_header.split(" ")[1]
-        
+        adfs_token = auth_header.split(" ")[1]
+
         try:
-            user = authenticate(request, access_token=token.encode("utf-8"))
-            if user is not None:                
+            user = authenticate(request, access_token=adfs_token.encode("utf-8"))
+            if user is not None:
                 logger.info(f"Login bem-sucedido: {user.username}")
-                
-                # Verificação final apenas para casos extremos
+
+                # Verificacao final apenas para casos extremos
                 if not user.is_superuser and (not user.companies.exists() or not user.groups.exists()):
                     logger.warning(f"Reprocessamento emergencial para {user.username}")
                     processed_user = associate_user_with_company_by_domain(user)
                     if processed_user is None:
                         return Response({
-                            "detail": "Usuário não possui domínio de empresa válida.",
+                            "detail": "Usuario nao possui dominio de empresa valida.",
                             "username": user.username
                         }, status=status.HTTP_403_FORBIDDEN)
                     user = processed_user
-                
-                # Busca todas as empresas do usuário
+
+                # Busca todas as empresas do usuario
                 companies = user.companies.all() if not user.is_superuser else []
                 companies_data = CompanySerializer(companies, many=True).data
-                
+
+                refresh = RefreshToken.for_user(user)
+                access_token = str(refresh.access_token)
+
                 response_data = {
-                    'token': str(token),
+                    'token': access_token,
+                    'refresh': str(refresh),
                     'user': {
                         'id': user.id,
                         'username': user.username,
@@ -88,19 +92,20 @@ class CustomLoginView(APIView):
                         'groups': list(user.groups.values_list('name', flat=True)),
                     },
                 }
-                
+
                 response = Response(response_data, status=status.HTTP_200_OK)
                 response.set_cookie(
                     key='refreshToken',
-                    value=str(token),
+                    value=str(refresh),
                     httponly=True,
                     secure=True,
                     samesite='Lax'
                 )
-                return response            
+                return response
             else:
-                return Response({"detail": "Token inválido ou usuário não autorizado."}, status=status.HTTP_401_UNAUTHORIZED)
+                return Response({"detail": "Token invalido ou usuario nao autorizado."}, status=status.HTTP_401_UNAUTHORIZED)
                 
+
         except Exception as e:
             logger.error(f"Erro no login: {str(e)}")
             return Response({
@@ -111,32 +116,43 @@ class CustomLoginView(APIView):
 
 class CustomTokenRefreshView(TokenRefreshView):
     def post(self, request, *args, **kwargs):
-        # Busque o token de refresh no cookie
-        refresh_token = request.COOKIES.get('refreshToken')
+        refresh_token = request.data.get('refresh') or request.COOKIES.get('refreshToken')
 
         if not refresh_token:
-            return Response({"detail": "Token de refresh não encontrado."}, status=400)
-
-        # Atualize o payload para usar o token do cookie
-        request.data['refresh'] = refresh_token
+            return Response({"detail": "Token de refresh nao encontrado."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            # Valida o token de refresh e pega o usuário associado
             refresh = RefreshToken(refresh_token)
             user = User.objects.get(id=refresh['user_id'])
 
-            # Verifica se o usuário está ativo
             if not user.is_active:
-                return Response({"detail": "Usuário inativo."}, status=403)
+                return Response({"detail": "Usuario inativo."}, status=status.HTTP_403_FORBIDDEN)
+        except (InvalidToken, TokenError):
+            return Response({"detail": "Token invalido ou expirado."}, status=status.HTTP_401_UNAUTHORIZED)
+        except User.DoesNotExist:
+            return Response({"detail": "Usuario nao encontrado."}, status=status.HTTP_401_UNAUTHORIZED)
 
-            # Continue com o fluxo padrão de renovação
-            response = super().post(request, *args, **kwargs)
+        serializer = self.get_serializer(data={'refresh': str(refresh_token)})
 
-        except (InvalidToken, TokenError) as e:
-            return Response({"detail": "Token inválido ou expirado."}, status=401)
+        try:
+            serializer.is_valid(raise_exception=True)
+        except TokenError as e:
+            raise InvalidToken(e.args[0])
+
+        response_data = serializer.validated_data
+        response = Response(response_data, status=status.HTTP_200_OK)
+
+        new_refresh_token = response_data.get('refresh')
+        if new_refresh_token:
+            response.set_cookie(
+                key='refreshToken',
+                value=new_refresh_token,
+                httponly=True,
+                secure=True,
+                samesite='Lax'
+            )
 
         return response
-
 
 class UserListView(APIView):
     permission_classes = [IsAuthenticated]
@@ -239,3 +255,4 @@ class UserGroupManagementView(APIView):
             }, status=status.HTTP_200_OK)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+

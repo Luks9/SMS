@@ -57,7 +57,7 @@ const UserTable = ({ users, loading, onEdit, paginationLoading }) => {
               <tr key={user.id}>
                 <td>{user.first_name} {user.last_name}</td>
                 <td>{user.email}</td>
-                <td>{user.is_superuser ? "-" : user.company?.name}</td>
+                <td>{user.is_superuser ? "-" : user.companies[0]?.name}</td>
                 <td>
                   <span className={`tag ${user.is_active ? 'is-success' : 'is-danger'}`}>
                     <FontAwesomeIcon icon={user.is_active ? faCheck : faTimes} />

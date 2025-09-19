@@ -1,7 +1,6 @@
 #apps/users/serializers.py
 from rest_framework import serializers
 from django.contrib.auth.models import User, Group
-from apps.core.models import Company
 
 
 class UserProfileSerializer(serializers.Serializer):
@@ -14,6 +13,7 @@ class UserProfileSerializer(serializers.Serializer):
 
 class CustomLoginSerializer(serializers.Serializer):
     token = serializers.CharField()
+    refresh = serializers.CharField(required=False)
     user = serializers.DictField()
 
 

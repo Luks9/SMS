@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import CompanySelectionModal from '../components/CompanySelectionModal';
 import Message from '../components/Message'; // Importa o componente Message
@@ -11,9 +11,6 @@ import { faMicrosoft } from '@fortawesome/free-brands-svg-icons';
 const Login = () => {
 
   const { instance } = useMsal();
-
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState(''); 
 
   const { 
     login, 
@@ -55,53 +52,28 @@ const Login = () => {
               onClose={() => setMessage(null)}
             />
           )} 
-          <h1 className="login-title">SMS AVALIA</h1>
-          {/* <form onSubmit={handleSubmit} className="box">
-            <div className="login-field">
-              <label className="login-label">Username</label>
-              <div className="control">
-                <input
-                  className="login-input"
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  required
-                />
-              </div>
-            </div>
-            <div className="login-field">
-              <label className="login-label">Password</label>
-              <div className="control">
-                <input
-                  className="login-input"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-              </div>
-            </div>
-            <div className="login-field">
-              <div className="control">
-                <button type="submit" disabled className="login-button-disabled">Login</button>
-              </div>
-            </div>
-          </form> */}
-          <div className="box">
-            <div className="btn-login-field">
-              <label className="login-label">Login</label>
-              <div className="control">
-                <button 
-                  onClick={handleLogin} 
-                  className="login-button is-primary" 
-                  style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}
-                >
-                  <FontAwesomeIcon icon={faMicrosoft} />
-                   Login com Microsoft
-                </button>
-              </div>
-            </div>
-          </div>
+<div className="login-header">
+  <img src="/LOGO_Brava.png" alt="Logo" className="login-logo" />
+  <h1 className="login-title">SMS AVALIA</h1>
+  <p className="login-subtitle">Acesse com sua conta corporativa Microsoft</p>
+</div>
+
+<div className="box">
+  <div className="btn-login-field">
+    <label className="login-label">Login</label>
+    <div className="control">
+      <button 
+        onClick={handleLogin} 
+        className="login-button" 
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem' }}
+      >
+        <FontAwesomeIcon icon={faMicrosoft} />
+        Entrar com Microsoft
+      </button>
+    </div>
+  </div>
+</div>
+
         </div>
       </div>
       

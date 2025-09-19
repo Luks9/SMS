@@ -115,7 +115,6 @@ const AnswerList = ({ questions, fetchEvaluationDetails }) => {
       try {
         await fetchEvaluationDetails();
         toggleEdit(questionId); // Fecha o modo de edição apenas após o reload bem-sucedido
-        console.log('Dados recarregados com sucesso após salvar a resposta.');
         // Limpa os campos selecionados após o reload bem-sucedido
         setSelectedAnswers((prev) => ({ ...prev, [questionId]: '' }));
       } catch (fetchError) {

@@ -9,7 +9,6 @@ const useFetchCompanyEvaluations = (companyId, is_active) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  console.log(is_active);
   // Função para validar o companyId
   const isValidCompanyId = (companyId) => {
     return companyId && !isNaN(companyId) && Number(companyId) > 0; // Valida que é um número positivo
@@ -29,7 +28,6 @@ const useFetchCompanyEvaluations = (companyId, is_active) => {
       }
 
       if (!isValidIsActive(is_active)) {
-        console.log(is_active);
         throw new Error('Valor de "is_active" inválido');
       }
 

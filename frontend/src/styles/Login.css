@@ -102,3 +102,16 @@
   .btn-login-field {
     margin-bottom: 2px;
   }
+
+  .login-logo {
+  max-width: 320px;
+  display: block;
+  margin: 0 auto 10px auto;
+}
+
+.login-subtitle {
+  font-size: 1rem;
+  color: #333;
+  text-align: center;
+  margin-bottom: 1.5rem;
+}

@@ -3,6 +3,7 @@ import React, {
   useState,
   useEffect,
   useCallback,
+  useRef,
 } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -17,6 +18,8 @@ export const AuthProvider = ({ children }) => {
   const [message, setMessage] = useState(null);
   const [showCompanySelection, setShowCompanySelection] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState(null);
+
+  const refreshPromiseRef = useRef(null);
 
   const {
     poles,
@@ -79,31 +82,106 @@ export const AuthProvider = ({ children }) => {
     }
   }, [user?.is_superuser, loadUserPoles, setActivePole, setPoles, user]);
 
+  const logout = useCallback(() => {
+    setUser(null);
+    setToken(null);
+    setPoles([]);
+    setActivePole(null);
+    setSelectedCompany(null);
+    setShowCompanySelection(false);
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('userType');
+    localStorage.removeItem('companyId');
+    localStorage.removeItem('selectedCompany');
+    delete axios.defaults.headers.common.Authorization;
+    navigate('/login');
+  }, [navigate, setActivePole, setPoles]);
+
   const verifyAndRefreshToken = useCallback(async () => {
-    try {
-      const refreshToken = localStorage.getItem('refreshToken');
-      if (!refreshToken) {
-        logout();
-        return;
-      }
+    if (refreshPromiseRef.current) {
+      return refreshPromiseRef.current;
+    }
 
-      const response = await axios.post('/api/users/token/refresh/', {
-        refresh: refreshToken,
-      });
+    const refreshPromise = (async () => {
+      try {
+        const storedRefreshToken = localStorage.getItem('refreshToken');
+        if (!storedRefreshToken) {
+          logout();
+          return false;
+        }
 
-      const newAccessToken = response.data.access;
+        const response = await axios.post('/api/users/token/refresh/', {
+          refresh: storedRefreshToken,
+        });
 
-      if (newAccessToken) {
+        const { access: newAccessToken, refresh: rotatedRefreshToken } = response.data || {};
+
+        if (!newAccessToken) {
+          logout();
+          return false;
+        }
+
         setToken(newAccessToken);
         localStorage.setItem('token', newAccessToken);
-      } else {
+        axios.defaults.headers.common.Authorization = `Bearer ${newAccessToken}`;
+
+        if (rotatedRefreshToken) {
+          localStorage.setItem('refreshToken', rotatedRefreshToken);
+        }
+
+        return true;
+      } catch (error) {
+        console.error('Erro ao renovar o token:', error);
         logout();
+        return false;
+      } finally {
+        refreshPromiseRef.current = null;
       }
-    } catch (error) {
-      console.error('Erro ao renovar o token:', error);
-      logout();
-    }
-  }, []);
+    })();
+
+    refreshPromiseRef.current = refreshPromise;
+    return refreshPromise;
+  }, [logout]);
+
+  useEffect(() => {
+    const responseInterceptor = axios.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        const originalRequest = error.config;
+
+        if (
+          error.response?.status === 401 &&
+          originalRequest &&
+          !originalRequest._retry &&
+          !originalRequest.url?.includes('/api/users/token/refresh/') &&
+          !originalRequest.url?.includes('/api/users/login/')
+        ) {
+          originalRequest._retry = true;
+
+          const refreshed = await verifyAndRefreshToken();
+
+          if (refreshed) {
+            const latestToken = localStorage.getItem('token');
+            if (latestToken) {
+              originalRequest.headers = {
+                ...(originalRequest.headers || {}),
+                Authorization: `Bearer ${latestToken}`,
+              };
+            }
+            return axios(originalRequest);
+          }
+        }
+
+        return Promise.reject(error);
+      }
+    );
+
+    return () => {
+      axios.interceptors.response.eject(responseInterceptor);
+    };
+  }, [verifyAndRefreshToken]);
 
   const handleCompanySelection = useCallback((company) => {
     setSelectedCompany(company);
@@ -183,22 +261,6 @@ export const AuthProvider = ({ children }) => {
     },
     [loadUserPoles, navigate, setActivePole, setPoles, handleCompanySelection]
   );
-
-  const logout = useCallback(() => {
-    setUser(null);
-    setToken(null);
-    setPoles([]);
-    setActivePole(null);
-    setSelectedCompany(null);
-    setShowCompanySelection(false);
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('userType');
-    localStorage.removeItem('companyId');
-    localStorage.removeItem('selectedCompany');
-    navigate('/login');
-  }, [navigate, setActivePole, setPoles]);
 
   const switchCompany = useCallback((company) => {
     handleCompanySelection(company);
