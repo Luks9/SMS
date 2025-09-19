@@ -15,16 +15,23 @@ class ScoreResponseSerializer(serializers.Serializer):
 
 class CompanySerializer(serializers.ModelSerializer):
     cnpj_display = serializers.SerializerMethodField()
+    users_list = serializers.SerializerMethodField()
     
     class Meta:
         model = Company
-        fields = '__all__'
+        fields = ['id', 'name', 'cnpj', 'cnpj_display', 'is_active', 'users', 'users_list', 'dominio']
     
     def get_cnpj_display(self, obj):
         """
         Retorna o CNPJ formatado para exibição
         """
         return format_cnpj_display(obj.cnpj)
+    
+    def get_users_list(self, obj):
+        """
+        Retorna lista dos usuários associados à empresa
+        """
+        return [{'id': user.id, 'username': user.username} for user in obj.users.all()]
     
     def to_representation(self, instance):
         """
@@ -326,7 +333,7 @@ class PoloSerializer(serializers.ModelSerializer):
             "name",
             "description",
             "companies",
-            "superusers",
+            "users",
             "is_active",
             "created_at",
             "updated_at",
