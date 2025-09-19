@@ -25,37 +25,42 @@ const Pagination = ({ totalItems, itemsPerPage, currentPage, onPageChange, disab
     const pages = [];
     for (let i = 1; i <= totalPages; i++) {
       pages.push(
-        <button
-          key={i}
-          className={`button ${i === currentPage ? 'is-primary' : ''}`}
-          onClick={() => handlePageClick(i)}
-          disabled={disabled}
-        >
-          {i}
-        </button>
+        <li key={i}>
+          <a
+            className={`pagination-link ${i === currentPage ? 'is-current' : ''}`}
+            onClick={() => handlePageClick(i)}
+            style={{ cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.6 : 1 }}
+          >
+            {i}
+          </a>
+        </li>
       );
     }
     return pages;
   };
 
   return (
-    <div className="pagination is-centered">
-      <button
-        className="button"
+    <nav className="pagination is-centered" role="navigation" aria-label="pagination">
+      <a
+        className="pagination-previous"
         onClick={handlePreviousPage}
         disabled={currentPage === 1 || disabled}
+        style={{ cursor: (currentPage === 1 || disabled) ? 'not-allowed' : 'pointer', opacity: (currentPage === 1 || disabled) ? 0.6 : 1 }}
       >
         Anterior
-      </button>
-      {renderPageNumbers()}
-      <button
-        className="button"
+      </a>
+      <a
+        className="pagination-next"
         onClick={handleNextPage}
         disabled={currentPage === totalPages || disabled}
+        style={{ cursor: (currentPage === totalPages || disabled) ? 'not-allowed' : 'pointer', opacity: (currentPage === totalPages || disabled) ? 0.6 : 1 }}
       >
         Próxima
-      </button>
-    </div>
+      </a>
+      <ul className="pagination-list">
+        {renderPageNumbers()}
+      </ul>
+    </nav>
   );
 };
 

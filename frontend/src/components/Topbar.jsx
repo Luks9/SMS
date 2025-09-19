@@ -6,8 +6,6 @@ import { AuthContext } from '../context/AuthContext';
 const Topbar = () => {
   const { user, poles, selectedPoleId, setActivePole, selectedPole, logout } = useContext(AuthContext) || {};
 
-  const userType = localStorage.getItem('userType');
-
   return (
     <nav 
       className="navbar is-light" 
@@ -22,7 +20,6 @@ const Topbar = () => {
         borderRadius: '0 0 8px 8px',
         margin: 0,
         boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-        
       }}
     >
       <div className="navbar-brand">

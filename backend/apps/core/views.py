@@ -39,41 +39,52 @@ class CompanyViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         """
-        Override create to automatically associate company with polo from header
+        Override create to automatically associate company with polo and user from header
         """
         pole_id = request.headers.get('X-Polo-Id')
         
         # Create the company first
         response = super().create(request, *args, **kwargs)
         
-        # If company was created successfully and polo_id is provided
-        if response.status_code == status.HTTP_201_CREATED and pole_id:
-            try:
-                polo = Polo.objects.get(id=pole_id, is_active=True)
-                company = Company.objects.get(id=response.data['id'])
-                polo.companies.add(company)
-                polo.save()
-            except Polo.DoesNotExist:
-                # Polo doesn't exist or is inactive - log or handle as needed
-                pass
-            except Exception:
-                # Handle any other errors silently
-                pass
+        # If company was created successfully
+        if response.status_code == status.HTTP_201_CREATED:
+            company = Company.objects.get(id=response.data['id'])
+            
+            # Add polo association if provided
+            if pole_id:
+                try:
+                    polo = Polo.objects.get(id=pole_id, is_active=True)
+                    polo.companies.add(company)
+                    polo.save()
+                except Polo.DoesNotExist:
+                    pass
+                except Exception:
+                    pass
+            
+            # If user is not superuser, automatically associate them with the company
+            if not request.user.is_superuser:
+                company.users.add(request.user)
         
         return response
 
     def get_queryset(self):
         """
-        Override get_queryset to add ordering and any future filtering
+        Override get_queryset to filter by user's companies if not superuser
         """
         queryset = Company.objects.all().order_by('name')
         pole_id = self.request.headers.get('X-Polo-Id')
-        if self.request.user.is_superuser and pole_id:
-            queryset = queryset.filter(poles__id=pole_id)
+        
+        if self.request.user.is_superuser:
+            if pole_id:
+                queryset = queryset.filter(poles__id=pole_id)
+        else:
+            # For non-superusers, only show companies they're associated with
+            queryset = queryset.filter(users=self.request.user)
+            
         return queryset
 
     @extend_schema(
-        description="Retorna todas as empresas sem paginação",
+        description="Retorna todas as empresas do usuário sem paginação",
         responses={200: CompanySerializer(many=True)}
     )
     @action(detail=False, methods=['get'], url_path='all')
@@ -83,11 +94,27 @@ class CompanyViewSet(viewsets.ModelViewSet):
         """ 
         pole_id = self.request.headers.get('X-Polo-Id')
         
-        if self.request.user.is_superuser and pole_id:
-            companies = Company.objects.filter(poles__id=pole_id).order_by('name')
+        if self.request.user.is_superuser:
+            if pole_id:
+                companies = Company.objects.filter(poles__id=pole_id).order_by('name')
+            else:
+                companies = Company.objects.all().order_by('name')
         else:
-            companies = Company.objects.all().order_by('name')
+            companies = Company.objects.filter(users=self.request.user).order_by('name')
             
+        serializer = CompanySerializer(companies, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        description="Retorna as empresas associadas ao usuário autenticado",
+        responses={200: CompanySerializer(many=True)}
+    )
+    @action(detail=False, methods=['get'], url_path='my-companies')
+    def my_companies(self, request):
+        """
+        Endpoint para retornar as empresas do usuário logado
+        """
+        companies = request.user.companies.filter(is_active=True).order_by('name')
         serializer = CompanySerializer(companies, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -184,12 +211,16 @@ class EvaluationViewSet(viewsets.ModelViewSet):
         is_active = self.request.query_params.get('is_active')
         pole_id = self.request.headers.get('X-Polo-Id')
 
-        if self.request.user.is_superuser and pole_id:
-            queryset = queryset.filter(company__poles__id=pole_id)
+        if self.request.user.is_superuser:
+            if pole_id:
+                queryset = queryset.filter(company__poles__id=pole_id)
+        else:
+            # Filter by user's companies
+            queryset = queryset.filter(company__users=self.request.user)
 
-            if is_active is not None:
-                is_active_bool = is_active.lower() == 'true'
-                queryset = queryset.filter(is_active=is_active_bool)
+        if is_active is not None:
+            is_active_bool = is_active.lower() == 'true'
+            queryset = queryset.filter(is_active=is_active_bool)
 
         return queryset.order_by('-period', '-id')
 
@@ -250,13 +281,11 @@ class EvaluationViewSet(viewsets.ModelViewSet):
         if user.is_superuser:
             return self._get_evaluation_details(evaluation)
 
-        # Verificar se o usuário pertence ao grupo "empresa" e está associado à empresa correta
-        if user.groups.filter(name='empresa').exists() and hasattr(user, 'companies'):
-            company = user.companies.first()  # Pega a primeira empresa associada ao usuário
-            if evaluation.company == company:
-                return self._get_evaluation_details(evaluation)
+        # Verificar se o usuário está associado à empresa da avaliação
+        if user.companies.filter(id=evaluation.company.id).exists():
+            return self._get_evaluation_details(evaluation)
 
-        # Se não for admin e não estiver associado à empresa correta, retorna erro de permissão
+        # Se não tiver acesso, retorna erro de permissão
         return Response(
             {"detail": "Você não tem permissão para acessar esta avaliação."},
             status=status.HTTP_403_FORBIDDEN
@@ -330,8 +359,14 @@ class ActionPlanViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = ActionPlan.objects.all()
         pole_id = self.request.headers.get('X-Polo-Id')
-        if self.request.user.is_superuser and pole_id:
-            queryset = queryset.filter(company__poles__id=pole_id)
+        
+        if self.request.user.is_superuser:
+            if pole_id:
+                queryset = queryset.filter(company__poles__id=pole_id)
+        else:
+            # Filter by user's companies
+            queryset = queryset.filter(company__users=self.request.user)
+            
         return queryset
 
 
@@ -355,7 +390,7 @@ class PoloViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='my-poles')
     def my_poles(self, request):
         poles = Polo.objects.filter(
-            superusers=request.user,
+            users=request.user,
             is_active=True
         ).order_by('name')
         serializer = self.get_serializer(poles, many=True)
