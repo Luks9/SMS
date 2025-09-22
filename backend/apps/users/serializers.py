@@ -1,6 +1,7 @@
 #apps/users/serializers.py
 from rest_framework import serializers
 from django.contrib.auth.models import User, Group
+from apps.core.serializers import PoloSerializer
 
 
 class UserProfileSerializer(serializers.Serializer):
@@ -21,10 +22,11 @@ class UserSerializer(serializers.ModelSerializer):
     companies = serializers.SerializerMethodField()
     groups = serializers.SerializerMethodField()
     full_name = serializers.SerializerMethodField()
+    polos = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'full_name', 'is_active', 'is_superuser', 'companies', 'groups', 'date_joined']
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'full_name', 'is_active', 'is_superuser', 'companies', 'groups', 'date_joined', 'is_staff', 'polos']
 
     def get_companies(self, obj):
         from apps.core.serializers import CompanySerializer
@@ -35,12 +37,15 @@ class UserSerializer(serializers.ModelSerializer):
 
     def get_full_name(self, obj):
         return f"{obj.first_name} {obj.last_name}".strip()
+    
+    def get_polos(self, obj):
+        return PoloSerializer(obj.poles.all(), many=True).data
 
 
 class UserUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['username', 'email', 'first_name', 'last_name', 'is_active']
+        fields = ['username', 'email', 'first_name', 'last_name', 'is_active', 'is_superuser']
 
 
 class GroupSerializer(serializers.ModelSerializer):
