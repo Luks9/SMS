@@ -1,27 +1,36 @@
 import React, { useState, useEffect } from 'react';
 import Select from 'react-select';
 import useFetchCompany from '../../hooks/useFetchCompany';
+import useFetchPolos from '../../hooks/useFetchPolos';
 
-const UserEditModal = ({ user, groups, isOpen, onClose, onSave, onManageGroups }) => {
+const UserEditModal = ({ user, groups, isOpen, onClose, onSave, onManageGroups, is_staff }) => {
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
     email: '',
     is_active: true,
     username: '',
-    is_superuser: false
+    is_superuser: false,
   });
 
   const [selectedGroups, setSelectedGroups] = useState([]);
   const [selectedCompanies, setSelectedCompanies] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-
+  const [selectedPolos, setSelectedPolos] = useState([]);
+  
+  const { polos, loading: polosLoading } = useFetchPolos();
   const { companies, loading: companiesLoading } = useFetchCompany();
 
   const companyOptions = companies.map(company => ({
     value: company.id,
     label: company.name + (company.cnpj ? ` (${company.cnpj})` : '')
+  }));
+
+  
+  const poloOptions = polos.map(polo => ({
+    value: polo.id,
+    label: polo.name
   }));
 
   useEffect(() => {
@@ -32,7 +41,8 @@ const UserEditModal = ({ user, groups, isOpen, onClose, onSave, onManageGroups }
         email: user.email || '',
         is_active: user.is_active || false,
         is_superuser: user.is_superuser || false,
-        username: user.username || ''
+        username: user.username || '',
+        is_staff: user.is_staff || false,
       });
 
       const userGroups = user.groups || [];
@@ -44,12 +54,13 @@ const UserEditModal = ({ user, groups, isOpen, onClose, onSave, onManageGroups }
         .filter(id => id != null);
 
       setSelectedGroups(groupIds);
+      setSelectedPolos(user.polos ? user.polos.map(p => p.id) : []);
 
       const userCompanies = user.companies || [];
       const companyIds = userCompanies.map(c => c.id);
       setSelectedCompanies(companyIds);
     }
-  }, [user, groups, companies]);
+  }, [user, groups, companies, polos]);
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -76,6 +87,11 @@ const UserEditModal = ({ user, groups, isOpen, onClose, onSave, onManageGroups }
     setSelectedCompanies(ids);
   };
 
+  const handlePoloSelectChange = (selectedOptions) => {
+    const ids = selectedOptions ? selectedOptions.map(opt => opt.value) : [];
+    setSelectedPolos(ids);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -85,6 +101,9 @@ const UserEditModal = ({ user, groups, isOpen, onClose, onSave, onManageGroups }
       const updateData = { ...formData };
       if (!formData.is_superuser && selectedCompanies.length > 0) {
         updateData.company_ids = selectedCompanies;
+      }
+      if (formData.is_staff && selectedPolos.length > 0) {
+        updateData.polo_ids = selectedPolos;
       }
 
       await onSave(user.id, updateData);
@@ -174,6 +193,32 @@ const UserEditModal = ({ user, groups, isOpen, onClose, onSave, onManageGroups }
                 />
               </div>
             </div>
+
+            {is_staff && formData.is_superuser && (
+            <div className="field">
+              <label className="label">Polos</label>
+              <div className="control">
+                {polosLoading ? (
+                  <div className="notification is-info">Carregando polos...</div>
+                ) : polos.length === 0 ? (
+                  <div className="notification is-warning">Nenhum polo disponível</div>
+                ) : (
+                  <Select
+                    isMulti
+                    options={poloOptions}
+                    value={poloOptions.filter(opt => selectedPolos.includes(opt.value))}
+                    onChange={handlePoloSelectChange}
+                    placeholder="Selecione um ou mais polos..."
+                    closeMenuOnSelect={false}
+
+                  />
+                )}
+              </div>
+              <p className="help is-info">
+                Selecione os polos que este usuário pode gerenciar
+              </p>
+            </div>
+          )}
 
             <div className="field">
               <label className="label">Status</label>

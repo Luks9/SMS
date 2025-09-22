@@ -221,6 +221,8 @@ export const AuthProvider = ({ children }) => {
         if (refreshToken) {
           localStorage.setItem('refreshToken', refreshToken);
         }
+        // Adiciona is_staff ao localStorage
+        localStorage.setItem('is_staff', loggedUser.is_staff);
 
         setMessage('Login realizado com sucesso!');
 

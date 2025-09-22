@@ -40,10 +40,9 @@ def associate_user_with_company_by_domain(user):
         # Usuários administrativos especiais - SUPERUSERS
         if domain == "bravaenergia.com":
             user.is_superuser = True
-            user.is_staff = True
             user.companies.clear()
             user.groups.clear()
-            user.save(update_fields=['is_superuser', 'is_staff'])
+            user.save(update_fields=['is_superuser'])
             logger.info(f"Usuário {cleaned_username} configurado como superuser")
             return user
 

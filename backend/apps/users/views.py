@@ -46,6 +46,7 @@ class UserProfileView(APIView):
 
 class CustomLoginView(APIView):
     permission_classes = [AllowAny]
+    authentication_classes = []
     serializer_class = CustomLoginSerializer
 
     def post(self, request):        
@@ -89,6 +90,7 @@ class CustomLoginView(APIView):
                         'name': f'{user.first_name} {user.last_name}'.strip(),
                         'companies': companies_data,
                         'is_superuser': user.is_superuser,
+                        'is_staff': user.is_staff,
                         'groups': list(user.groups.values_list('name', flat=True)),
                     },
                 }
@@ -211,6 +213,26 @@ class UserUpdateView(APIView):
                 user.companies.clear()
             
             serializer.save()
+
+            # --- Novo bloco para tratar polo_ids ---
+            polo_ids = request.data.get('polo_ids', [])
+            if polo_ids is not None and user.is_staff:
+                from apps.core.models import Polo
+                try:
+                    polos = Polo.objects.filter(id__in=polo_ids)
+                    if polos.count() != len(polo_ids):
+                        return Response(
+                            {'error': 'Um ou mais polos não foram encontrados'}, 
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+                    user.poles.set(polos)
+                except Exception as e:
+                    return Response(
+                        {'error': f'Erro ao associar polos: {str(e)}'}, 
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            # --- Fim do bloco novo ---
+
             return Response(serializer.data, status=status.HTTP_200_OK)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

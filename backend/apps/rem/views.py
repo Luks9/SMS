@@ -1,7 +1,6 @@
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 from drf_spectacular.utils import extend_schema
-from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.status import HTTP_201_CREATED, HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND, HTTP_200_OK
 from rest_framework.decorators import action
@@ -61,10 +60,11 @@ class RemViewSet(viewsets.ModelViewSet):
         Endpoint para retornar todos os dados combinados de REM, Diesel Consumido e Funcionários Demitidos para todas as empresas.
         """
         # Obtém todos os dados de REM, Diesel Consumido e Funcionários Demitidos
-        rems = Rem.objects.all()
-        diesel_consumidos = DieselConsumido.objects.all()
-        funcionarios_demitidos = FuncionariosDemitidos.objects.all()
 
+        polo_id = self.request.headers.get('X-Polo-Id')
+        rems = Rem.objects.filter(company__poles__id=polo_id).order_by('-periodo', '-id')
+        diesel_consumidos = DieselConsumido.objects.filter(company__poles__id=polo_id)
+        funcionarios_demitidos = FuncionariosDemitidos.objects.filter(company__poles__id=polo_id)
         # Combina os dados
         combined_data = []
         for rem in rems:
