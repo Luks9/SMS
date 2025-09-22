@@ -3,7 +3,6 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEdit, faCheck, faTimes, faSpinner } from '@fortawesome/free-solid-svg-icons';
 
 const UserTable = ({ users, loading, onEdit, paginationLoading }) => {
-  const itemsPerPage = 3;
 
   if (loading) {
     return (
@@ -66,7 +65,10 @@ const UserTable = ({ users, loading, onEdit, paginationLoading }) => {
                 </td>
                 <td>
                   {user.is_superuser ? (
-                    <span className="tag is-info">Avaliador</span>
+                    <span 
+                    className={`tag is-info`}
+                    title={user.is_staff ? "Staff" : ""}>
+                      Avaliador</span>
                   ) : (
                     <span className="tag is-warning">Empresa</span>
                   )}

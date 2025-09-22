@@ -395,3 +395,9 @@ class PoloViewSet(viewsets.ModelViewSet):
         ).order_by('name')
         serializer = self.get_serializer(poles, many=True)
         return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'], url_path='all')
+    def all_polos(self, request):
+        polos = Polo.objects.filter(is_active=True)
+        serializer = self.get_serializer(polos, many=True)
+        return Response(serializer.data)
