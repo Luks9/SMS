@@ -47,6 +47,7 @@ const Usuarios = () => {
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState(null);
   const [isCompanyModalOpen, setIsCompanyModalOpen] = useState(false);
+  const is_staff = localStorage.getItem('is_staff') === 'true';
 
   useEffect(() => {
     fetchCompanies();
@@ -266,6 +267,7 @@ const Usuarios = () => {
           onClose={handleCloseUserModal}
           onSave={handleSaveUser}
           onManageGroups={handleManageGroups}
+          is_staff={is_staff}
         />
 
         {/* Modal de Edição de Empresa */}

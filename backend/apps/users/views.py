@@ -90,6 +90,7 @@ class CustomLoginView(APIView):
                         'name': f'{user.first_name} {user.last_name}'.strip(),
                         'companies': companies_data,
                         'is_superuser': user.is_superuser,
+                        'is_staff': user.is_staff,
                         'groups': list(user.groups.values_list('name', flat=True)),
                     },
                 }
@@ -215,7 +216,7 @@ class UserUpdateView(APIView):
 
             # --- Novo bloco para tratar polo_ids ---
             polo_ids = request.data.get('polo_ids', [])
-            if polo_ids is not None:
+            if polo_ids is not None and user.is_staff:
                 from apps.core.models import Polo
                 try:
                     polos = Polo.objects.filter(id__in=polo_ids)

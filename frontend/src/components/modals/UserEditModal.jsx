@@ -3,7 +3,7 @@ import Select from 'react-select';
 import useFetchCompany from '../../hooks/useFetchCompany';
 import useFetchPolos from '../../hooks/useFetchPolos';
 
-const UserEditModal = ({ user, groups, isOpen, onClose, onSave, onManageGroups }) => {
+const UserEditModal = ({ user, groups, isOpen, onClose, onSave, onManageGroups, is_staff }) => {
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
@@ -194,7 +194,7 @@ const UserEditModal = ({ user, groups, isOpen, onClose, onSave, onManageGroups }
               </div>
             </div>
 
-            {formData.is_staff && (
+            {is_staff && formData.is_superuser && (
             <div className="field">
               <label className="label">Polos</label>
               <div className="control">
