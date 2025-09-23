@@ -20,11 +20,12 @@ const Usuarios = () => {
     currentPage, 
     loading, 
     paginationLoading, 
-    error, 
+    error,
+    searchTerm,
+    handleSearch,
     fetchUsers,
     updateUser,
-    manageUserGroups,
-    deleteUser
+    manageUserGroups
   } = useFetchUsers();
 
   const {
@@ -90,10 +91,6 @@ const Usuarios = () => {
     await manageUserGroups(userId, groupIds, action);
   };
 
-  const handleDeleteUser = async (userId) => {
-    await deleteUser(userId);
-  };
-
   const handleDeleteCompany = async (companyId) => {
     try {
       await deleteCompany(companyId);
@@ -146,12 +143,13 @@ const Usuarios = () => {
             </p>
           </header>
           <div className="card-content">
-            <UserTable 
+            <UserTable
               users={users}
-              groups={groups}
               loading={loading}
               onEdit={handleEditUser}
-              onDelete={handleDeleteUser}
+              paginationLoading={paginationLoading}
+              searchValue={searchTerm}
+              onSearch={handleSearch}
             />
 
             {/* Paginação de Usuários */}
