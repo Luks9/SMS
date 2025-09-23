@@ -164,10 +164,22 @@ class UserListView(APIView):
         users = User.objects.all()
         pole_id = request.headers.get('X-Polo-Id')
         if pole_id:
-            users = User.objects.filter(
+            users = users.filter(
                 Q(companies__poles__id=pole_id) |  # usuários de empresas do polo
                 Q(poles__id=pole_id)
-            ).distinct()
+            )
+
+        search = request.query_params.get('search', '').strip()
+        if search:
+            users = users.filter(
+                Q(username__icontains=search) |
+                Q(first_name__icontains=search) |
+                Q(last_name__icontains=search) |
+                Q(email__icontains=search) |
+                Q(companies__name__icontains=search)
+            )
+
+        users = users.distinct()
 
         paginated_users = pagination_class.paginate_queryset(users, request)
         serializer = UserSerializer(paginated_users, many=True)

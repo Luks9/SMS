@@ -14,8 +14,9 @@ const useFetchUsers = () => {
   const [paginationLoading, setPaginationLoading] = useState(false);
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const fetchUsers = async (page = 1) => {
+  const fetchUsers = async (page = 1, search = searchTerm) => {
     const token = getToken();
 
     if (!token) {
@@ -24,30 +25,48 @@ const useFetchUsers = () => {
       return;
     }
 
-    try {
+    const shouldShowSkeleton = page === 1 && users.length === 0;
+
+    if (shouldShowSkeleton) {
+      setLoading(true);
+    } else {
       setPaginationLoading(true);
-      const response = await axios.get(`/api/users/list/?page=${page}`, {
+    }
+
+    try {
+      const params = new URLSearchParams({ page: String(page) });
+      if (search) {
+        params.append('search', search);
+      }
+
+      const response = await axios.get(`/api/users/list/?${params.toString()}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
-      if (response.data.results) {
-        setUsers(response.data.results);
-        setCount(response.data.count);
-        setNext(response.data.next);
-        setPrevious(response.data.previous);
-        setCurrentPage(page);
-      } else {
-        setError('Nenhum usuário encontrado.');
-      }
+
+      const { results = [], count: totalCount = 0, next: nextPage = null, previous: previousPage = null } = response.data || {};
+
+      setUsers(results);
+      setCount(totalCount);
+      setNext(nextPage);
+      setPrevious(previousPage);
+      setCurrentPage(page);
+      setError(null);
     } catch (err) {
       console.error('Erro ao buscar usuários:', err);
       setError('Erro ao buscar usuários. Tente novamente mais tarde.');
-    } finally {
-      setPaginationLoading(false);
       if (page === 1) {
+        setUsers([]);
+        setCount(0);
+        setNext(null);
+        setPrevious(null);
+      }
+    } finally {
+      if (shouldShowSkeleton) {
         setLoading(false);
       }
+      setPaginationLoading(false);
     }
   };
 
@@ -85,10 +104,7 @@ const useFetchUsers = () => {
         },
       });
 
-      // Atualiza o usuário na lista local
-      setUsers(prevUsers => prevUsers.map(user => 
-        user.id === userId ? { ...user, ...response.data } : user
-      ));
+      setUsers((prevUsers) => prevUsers.map((user) => (user.id === userId ? { ...user, ...response.data } : user)));
 
       return response.data;
     } catch (err) {
@@ -105,20 +121,21 @@ const useFetchUsers = () => {
     }
 
     try {
-      const response = await axios.post(`/api/users/users/${userId}/groups/`, {
-        group_ids: groupIds,
-        action: action
-      }, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
+      const response = await axios.post(
+        `/api/users/users/${userId}/groups/`,
+        {
+          group_ids: groupIds,
+          action: action,
         },
-      });
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
 
-      // Atualiza o usuário na lista local com os dados retornados
-      setUsers(prevUsers => prevUsers.map(user => 
-        user.id === userId ? response.data.user : user
-      ));
+      setUsers((prevUsers) => prevUsers.map((user) => (user.id === userId ? response.data.user : user)));
 
       return response.data;
     } catch (err) {
@@ -141,12 +158,16 @@ const useFetchUsers = () => {
         },
       });
 
-      // Remove o usuário da lista local
-      setUsers(users.filter(user => user.id !== userId));
+      setUsers((prevUsers) => prevUsers.filter((user) => user.id !== userId));
     } catch (err) {
       console.error('Erro ao deletar usuário:', err);
       throw err;
     }
+  };
+
+  const handleSearch = async (term = '') => {
+    setSearchTerm(term);
+    await fetchUsers(1, term);
   };
 
   useEffect(() => {
@@ -156,20 +177,22 @@ const useFetchUsers = () => {
     fetchGroups();
   }, [getToken]);
 
-  return { 
-    users, 
+  return {
+    users,
     groups,
-    count, 
-    next, 
-    previous, 
-    currentPage, 
-    loading, 
-    paginationLoading, 
-    error, 
+    count,
+    next,
+    previous,
+    currentPage,
+    loading,
+    paginationLoading,
+    error,
     fetchUsers,
     updateUser,
     manageUserGroups,
-    deleteUser
+    deleteUser,
+    searchTerm,
+    handleSearch,
   };
 };
 

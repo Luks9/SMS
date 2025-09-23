@@ -182,6 +182,10 @@ class EvaluationViewSet(viewsets.ModelViewSet):
 
         # Pegamos todas as respostas associadas a essa avaliação
         answers = evaluation.answers.all()
+        if not answers.exists():
+            return Response({
+                "detail": "Nenhuma resposta encontrada para esta avaliação."
+            }, status=status.HTTP_404_NOT_FOUND)
 
         total_score = 100  # Pontuação acumulada
 

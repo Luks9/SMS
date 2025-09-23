@@ -150,14 +150,15 @@ export const AuthProvider = ({ children }) => {
       (response) => response,
       async (error) => {
         const originalRequest = error.config;
+        const isAuthRequest = originalRequest?.url?.includes('/api/users/token/refresh/') ||
+          originalRequest?.url?.includes('/api/users/login/');
 
-        if (
-          error.response?.status === 401 &&
-          originalRequest &&
-          !originalRequest._retry &&
-          !originalRequest.url?.includes('/api/users/token/refresh/') &&
-          !originalRequest.url?.includes('/api/users/login/')
-        ) {
+        if (error.response?.status === 401 && originalRequest && !isAuthRequest) {
+          if (originalRequest._retry) {
+            logout();
+            return Promise.reject(error);
+          }
+
           originalRequest._retry = true;
 
           const refreshed = await verifyAndRefreshToken();
@@ -172,6 +173,8 @@ export const AuthProvider = ({ children }) => {
             }
             return axios(originalRequest);
           }
+
+          logout();
         }
 
         return Promise.reject(error);
@@ -181,7 +184,7 @@ export const AuthProvider = ({ children }) => {
     return () => {
       axios.interceptors.response.eject(responseInterceptor);
     };
-  }, [verifyAndRefreshToken]);
+  }, [logout, verifyAndRefreshToken]);
 
   const handleCompanySelection = useCallback((company) => {
     setSelectedCompany(company);
