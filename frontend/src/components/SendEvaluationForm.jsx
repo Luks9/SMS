@@ -23,15 +23,24 @@ const SendEvaluationForm = ({ forms, companies, onEvaluationSent }) => {
     score: 0, // Inicialmente 0
     is_active: true, // Sempre ativo
     status: 'PENDING', // Status inicial
-    company: null, // Selecionado pelo administrador
     evaluator: user.id, // ID do avaliador, geralmente o usuário logado
     form: null, // Selecionado pelo administrador
     period: getCurrentMonthYear(), // Preenchido com o mês e ano atual
+    companies: [], // Add companies array to initialFormData
   };
 
   const [formData, setFormData] = useState(initialFormData);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('success');
+
+  // Novo helper para gerar opções de empresas
+  const companyOptions = companies ? companies.map(company => ({ 
+    value: company.id, 
+    label: company.name 
+  })) : [];
+
+  // Adicionar opção "Selecionar Todos"
+  const allOption = { value: 'all', label: 'Selecionar Todos' };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -41,11 +50,21 @@ const SendEvaluationForm = ({ forms, companies, onEvaluationSent }) => {
     });
   };
 
-  const handleCompanyChange = (selectedOption) => {
-    setFormData({
-      ...formData,
-      company: selectedOption ? selectedOption.value : null,
-    });
+  const handleCompanyChange = (selectedOptions) => {
+    if (selectedOptions?.some(option => option.value === 'all')) {
+      // Se "Selecionar Todos" foi escolhido, seleciona todas as empresas
+      const allCompanies = companies.map(company => company.id);
+      setFormData({
+        ...formData,
+        companies: allCompanies,
+      });
+    } else {
+      // Caso contrário, usa as empresas selecionadas
+      setFormData({
+        ...formData,
+        companies: selectedOptions ? selectedOptions.map(option => option.value) : [],
+      });
+    }
   };
 
   const handleFormChange = (selectedOption) => {
@@ -58,7 +77,23 @@ const SendEvaluationForm = ({ forms, companies, onEvaluationSent }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const today = new Date().toISOString().split('T')[0]; // Obter a data atual no formato YYYY-MM-DD
+    if (formData.valid_until < today) {
+      setMessage('A data limite não pode ser retroativa.');
+      setMessageType('error');
+      return;
+    }
+
+    if (!formData.companies || formData.companies.length === 0) {
+      setMessage('Por favor, selecione pelo menos uma empresa');
+      setMessageType('error');
+      return;
+    }
+
+    if (!formData.form) {
+      setMessage('Por favor, selecione um formulário');
+      setMessageType('error');
+      return;
+    }
 
     if (formData.valid_until < today) {
       setMessage('A data limite não pode ser retroativa.');
@@ -66,29 +101,44 @@ const SendEvaluationForm = ({ forms, companies, onEvaluationSent }) => {
       return;
     }
 
-    // Converter 'period' para o formato 'YYYY-MM-01'
     const formattedPeriod = `${formData.period}-01`;
 
     try {
       const token = getToken();
-      await axios.post('/api/evaluation/', {
+      const response = await axios.post('/api/evaluation/', {
         ...formData,
-        period: formattedPeriod, // Usar a data formatada para o backend
+        companies: formData.companies,
+        period: formattedPeriod,
       }, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
 
-      setMessage('Avaliação enviada com sucesso!');
+      setMessage('Avaliações enviadas com sucesso!');
       setMessageType('success');
-      setFormData(initialFormData); // Resetar o formulário após o envio
+      setFormData({ ...initialFormData }); // Use spread operator to create a new object
 
       if (onEvaluationSent) {
-        onEvaluationSent(); // Callback opcional para ações adicionais após o envio
+        onEvaluationSent();
       }
     } catch (error) {
-      setMessage(error.response.data.non_field_errors[0]);
+      if (error.response?.data?.duplicate_companies) {
+        const duplicateCompanies = error.response.data.duplicate_companies;
+        const message = (
+          <div>
+            <p>As seguintes empresas já possuem avaliações para este período e formulário:</p>
+            <ul style={{ listStyle: 'disc', marginLeft: '20px', marginTop: '10px' }}>
+              {duplicateCompanies.map((company, index) => (
+                <li key={index}>{company}</li>
+              ))}
+            </ul>
+          </div>
+        );
+        setMessage(message);
+      } else {
+        setMessage(error.response?.data?.message || 'Erro ao enviar avaliações');
+      }
       setMessageType('error');
     }
   };
@@ -97,7 +147,7 @@ const SendEvaluationForm = ({ forms, companies, onEvaluationSent }) => {
     <form onSubmit={handleSubmit}>
       {message && (
         <Message
-          message={message}
+          message={typeof message === 'string' ? message : message}
           type={messageType}
           onClose={() => setMessage('')}
         />
@@ -125,11 +175,15 @@ const SendEvaluationForm = ({ forms, companies, onEvaluationSent }) => {
             <label className="label">Empresa</label>
             <div className="control">
               <Select
-                name="company"
-                options={companies ? companies.map(company => ({ value: company.id, label: company.name })) : []}
+                name="companies"
+                options={[allOption, ...companyOptions]}
                 className="basic-single"
                 classNamePrefix="select"
                 onChange={handleCompanyChange}
+                isMulti
+                value={companyOptions.filter(option => 
+                  formData.companies?.includes(option.value) // Add optional chaining
+                )}
               />
             </div>
           </div>
