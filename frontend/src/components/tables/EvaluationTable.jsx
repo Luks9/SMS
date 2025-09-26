@@ -169,14 +169,16 @@ const EvaluationTable = ({ evaluations, refreshEvaluations, count, currentPage, 
                   </progress>
                 </td>
                 <td className="px-0" style={{ textAlign: 'center' }}>
-                  <button
-                    className="button is-light is-small"
-                    onClick={() => handleDelete(evaluation.id)}
-                    title="Excluir avaliação"
-                    disabled={paginationLoading} // Desativa durante o carregamento
-                  >
-                    <FontAwesomeIcon icon={faTrashCan} size="lg" color="red" />
-                  </button>
+                  {evaluation.status !== 'COMPLETED' && (
+                    <button
+                      className="button is-light is-small"
+                      onClick={() => handleDelete(evaluation.id)}
+                      title="Excluir avaliação"
+                      disabled={paginationLoading}
+                    >
+                      <FontAwesomeIcon icon={faTrashCan} size="lg" color="red" />
+                    </button>
+                  )}
                 </td>
                 <td className="px-0" style={{ textAlign: 'center' }}>
                   <button

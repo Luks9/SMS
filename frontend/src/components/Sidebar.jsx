@@ -94,7 +94,7 @@ const Sidebar = () => {
         </ul>
       </div>
 
-      <footer className="sidebar-footer">
+      {/* <footer className="sidebar-footer">
         <ul className="menu-list">
           <li>
             <button className="button is-danger is-small" onClick={logout}>
@@ -102,7 +102,7 @@ const Sidebar = () => {
             </button>
           </li>
         </ul>
-      </footer>
+      </footer> */}
     </aside>
   );
 };

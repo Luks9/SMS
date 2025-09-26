@@ -3,8 +3,8 @@ import { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
 
-const useFetchCompany = () => {
-  const { getToken } = useContext(AuthContext);
+const useFetchCompany = (onlyActive = null) => {
+  const { getToken, selectedPoleId } = useContext(AuthContext);
 
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -13,10 +13,16 @@ const useFetchCompany = () => {
   const fetchCompanies = async () => {
     try {
       const token = getToken();
+
+      const params = {};
+      if (onlyActive !== undefined && onlyActive !== null) {
+        params.is_active = onlyActive;
+      }
       const response = await axios.get('/api/companies/all/', {
         headers: {
           Authorization: `Bearer ${token}`,
         },
+        params,
       });
       setCompanies(response.data);
     } catch (error) {
@@ -29,7 +35,7 @@ const useFetchCompany = () => {
   useEffect(() => {
     setLoading(true);
     fetchCompanies();
-  }, []);
+  }, [selectedPoleId]);
 
   return { companies, loading, fetchCompanies };
 };

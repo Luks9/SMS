@@ -11,7 +11,7 @@ import { faSpinner } from '@fortawesome/free-solid-svg-icons';
 
 const EnvioAvaliacoes = () => {
   const { forms } = useFetchForms();
-  const { companies } = useFetchCompany();
+  const { companies } = useFetchCompany(true); 
   const { evaluations, count, currentPage, loading, paginationLoading, fetchEvaluations } = useFetchEvaluations();
 
   return (

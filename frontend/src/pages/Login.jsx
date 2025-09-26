@@ -30,10 +30,6 @@ const Login = () => {
     });
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    //login(username, password);
-  };
 
   const handleCloseCompanyModal = () => {
     setShowCompanySelection(false);
@@ -60,7 +56,6 @@ const Login = () => {
 
 <div className="box">
   <div className="btn-login-field">
-    <label className="login-label">Login</label>
     <div className="control">
       <button 
         onClick={handleLogin} 
