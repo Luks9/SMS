@@ -169,6 +169,12 @@ class UserListView(APIView):
                 Q(poles__id=pole_id)
             )
 
+        user_type = request.query_params.get('user_type', '').strip().lower()
+        if user_type == 'avaliador':
+            users = users.filter(is_superuser=True)
+        elif user_type == 'empresa':
+            users = users.filter(is_superuser=False)
+
         search = request.query_params.get('search', '').strip()
         if search:
             users = users.filter(

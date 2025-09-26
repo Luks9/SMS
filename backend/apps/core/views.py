@@ -8,6 +8,8 @@ import os
 from apps.users.utils.permissions import user_has_access_to_company
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404
+from django.db.models import Exists, OuterRef, Q
+from django.db.models.deletion import ProtectedError
 from .models import Company, CategoryQuestion, Question, Form, Answer, Subcategory, Evaluation, ActionPlan, Polo
 from .serializers import (
     CompanySerializer, 
@@ -73,15 +75,48 @@ class CompanyViewSet(viewsets.ModelViewSet):
         """
         queryset = Company.objects.all().order_by('name')
         pole_id = self.request.headers.get('X-Polo-Id')
-        
+        search = self.request.query_params.get('search', '').strip()
+
         if self.request.user.is_superuser:
             if pole_id:
                 queryset = queryset.filter(poles__id=pole_id)
         else:
             # For non-superusers, only show companies they're associated with
             queryset = queryset.filter(users=self.request.user)
-            
-        return queryset
+
+        if search:
+            queryset = queryset.filter(
+                Q(name__icontains=search)
+                | Q(cnpj__icontains=search)
+                | Q(dominio__icontains=search)
+            )
+
+        return queryset.annotate(
+            has_evaluations=Exists(
+                Evaluation.objects.filter(company=OuterRef('pk'), is_active=True)
+            )
+        )
+
+    def destroy(self, request, *args, **kwargs):
+        company = self.get_object()
+        has_evaluations = getattr(company, 'has_evaluations', None)
+        if has_evaluations is None:
+            has_evaluations = company.evaluations.filter(is_active=True).exists()
+
+        if has_evaluations:
+            return Response(
+                {"detail": "Não é possível excluir empresas com avaliações ativas associadas."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            return super().destroy(request, *args, **kwargs)
+        except ProtectedError:
+            return Response(
+                {"detail": "Não é possível excluir empresas com avaliações ativas associadas."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
 
     @extend_schema(
         description="Retorna todas as empresas do usuário sem paginação",
