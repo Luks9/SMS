@@ -10,20 +10,48 @@ const UserTable = ({
   paginationLoading,
   searchValue = '',
   onSearch,
-  searchPlaceholder = 'Buscar usuário...'
+  searchPlaceholder = 'Buscar usuário...',
+  filterValue = 'all',
+  onFilterChange = () => {},
 }) => {
   const showEmptyState = !loading && users.length === 0;
   const disableSearch = loading || paginationLoading;
 
   return (
     <div>
-      <div className="mb-4" style={{ maxWidth: '360px', marginLeft: 'auto' }}>
-        <TableSearchInput
-          value={searchValue}
-          onSearch={onSearch}
-          isLoading={disableSearch}
-          placeholder={searchPlaceholder}
-        />
+      <div
+        className="mb-4"
+        style={{
+          display: 'flex',
+          gap: '1rem',
+          justifyContent: 'flex-end',
+          flexWrap: 'wrap',
+        }}
+      >
+        <div style={{ minWidth: '160px' }}>
+          
+          <div className="select is-fullwidth is-small">
+            <select
+              id="user-type-filter"
+              value={filterValue}
+              onChange={(event) => onFilterChange(event.target.value)}
+              disabled={disableSearch}
+            >
+              <option value="all">Todos</option>
+              <option value="avaliador">Avaliador</option>
+              <option value="empresa">Empresa</option>
+            </select>
+          </div>
+        </div>
+
+        <div style={{ maxWidth: '360px' }}>
+          <TableSearchInput
+            value={searchValue}
+            onSearch={onSearch}
+            isLoading={disableSearch}
+            placeholder={searchPlaceholder}
+          />
+        </div>
       </div>
 
       <div style={{ position: 'relative' }}>

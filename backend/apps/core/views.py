@@ -292,17 +292,40 @@ class EvaluationViewSet(viewsets.ModelViewSet):
         queryset = Evaluation.objects.all()
         is_active = self.request.query_params.get('is_active')
         pole_id = self.request.headers.get('X-Polo-Id')
+        search = self.request.query_params.get('search', '')
 
         if self.request.user.is_superuser:
             if pole_id:
                 queryset = queryset.filter(company__poles__id=pole_id)
         else:
-            # Filter by user's companies
             queryset = queryset.filter(company__users=self.request.user)
 
         if is_active is not None:
             is_active_bool = is_active.lower() == 'true'
             queryset = queryset.filter(is_active=is_active_bool)
+
+        period_month = self.request.query_params.get('period_month')
+        if period_month:
+            try:
+                month_int = int(period_month)
+            except (TypeError, ValueError):
+                month_int = None
+            else:
+                if 1 <= month_int <= 12:
+                    queryset = queryset.filter(period__month=month_int)
+        period_year = self.request.query_params.get('period_year')
+        if period_year:
+            try:
+                year_int = int(period_year)
+            except (TypeError, ValueError):
+                year_int = None
+            else:
+                queryset = queryset.filter(period__year=year_int)
+
+        if search:
+            queryset = queryset.filter(
+                company__name__icontains=search
+            )
 
         return queryset.order_by('-period', '-id')
 

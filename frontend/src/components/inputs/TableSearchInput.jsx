@@ -5,7 +5,6 @@ import { faSearch, faTimes } from '@fortawesome/free-solid-svg-icons';
 const TableSearchInput = ({
   value = '',
   onSearch,
-  debounceDelay = 400,
   placeholder = 'Buscar...',
   autoFocus = false,
   isLoading = false,
@@ -13,7 +12,6 @@ const TableSearchInput = ({
   size = 'small',
 }) => {
   const [internalValue, setInternalValue] = useState(value);
-  const didMountRef = useRef(false);
   const onSearchRef = useRef(onSearch);
   const MIN_SEARCH_CHARS = 3;
 
@@ -41,19 +39,6 @@ const TableSearchInput = ({
       onSearchRef.current(trimmedTerm);
     }
   };
-
-  useEffect(() => {
-    if (!didMountRef.current) {
-      didMountRef.current = true;
-      return;
-    }
-
-    const handler = setTimeout(() => {
-      triggerSearch(internalValue);
-    }, debounceDelay);
-
-    return () => clearTimeout(handler);
-  }, [internalValue, debounceDelay]);
 
   const handleSubmit = (event) => {
     event.preventDefault();

@@ -23,6 +23,8 @@ const Usuarios = () => {
     error,
     searchTerm,
     handleSearch,
+    userTypeFilter,
+    handleUserTypeFilter,
     fetchUsers,
     updateUser,
     manageUserGroups
@@ -150,6 +152,8 @@ const Usuarios = () => {
               paginationLoading={paginationLoading}
               searchValue={searchTerm}
               onSearch={handleSearch}
+              filterValue={userTypeFilter}
+              onFilterChange={handleUserTypeFilter}
             />
 
             {/* Paginação de Usuários */}
