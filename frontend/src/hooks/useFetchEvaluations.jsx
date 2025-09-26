@@ -7,27 +7,49 @@ import { AuthContext } from '../context/AuthContext';
 const useFetchEvaluations = () => {
   const { getToken } = useContext(AuthContext);
 
+  const currentMonth = new Date();
+  const defaultPeriod = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}`;
+
   const [evaluations, setEvaluations] = useState([]);
   const [count, setCount] = useState(0);
   const [next, setNext] = useState(null);
   const [previous, setPrevious] = useState(null);
-  const [loading, setLoading] = useState(true); // Carregamento inicial
-  const [paginationLoading, setPaginationLoading] = useState(false); // Carregamento da paginação
+  const [loading, setLoading] = useState(true);
+  const [paginationLoading, setPaginationLoading] = useState(false);
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [periodFilter, setPeriodFilter] = useState(defaultPeriod);
 
-  const fetchEvaluations = async (page = 1) => {
+  const fetchEvaluations = async (page = 1, search = searchTerm, period = periodFilter) => {
     const token = getToken();
 
     if (!token) {
-      setError('Token de autenticação não disponível');
+      setError('Token de autenticacao nao disponivel');
       setLoading(false);
       return;
     }
 
     try {
-      setPaginationLoading(true); // Inicia o carregamento da paginação
-      const response = await axios.get(`/api/evaluation/?is_active=true&page=${page}`, {
+      const params = new URLSearchParams({ page: String(page) });
+      if (search) {
+        params.append('search', search);
+      }
+      if (period) {
+        const [yearPart, monthPart] = period.split('-');
+        if (yearPart) {
+          params.append('period_year', yearPart);
+        }
+        if (monthPart) {
+          const monthNumber = parseInt(monthPart, 10);
+          if (!Number.isNaN(monthNumber)) {
+            params.append('period_month', String(monthNumber));
+          }
+        }
+      }
+
+      setPaginationLoading(true);
+      const response = await axios.get(`/api/evaluation/?is_active=true&${params.toString()}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -40,17 +62,27 @@ const useFetchEvaluations = () => {
         setPrevious(response.data.previous);
         setCurrentPage(page);
       } else {
-        setError('Nenhuma avaliação encontrada.');
+        setError('Nenhuma avaliacao encontrada.');
       }
     } catch (err) {
-      console.error('Erro ao buscar avaliações:', err);
-      setError('Erro ao buscar avaliações. Tente novamente mais tarde.');
+      console.error('Erro ao buscar avaliacoes:', err);
+      setError('Erro ao buscar avaliacoes. Tente novamente mais tarde.');
     } finally {
-      setPaginationLoading(false); // Finaliza o carregamento da paginação
+      setPaginationLoading(false);
       if (page === 1) {
-        setLoading(false); // Finaliza o carregamento inicial apenas na primeira página
+        setLoading(false);
       }
     }
+  };
+
+  const handleSearch = async (term = '') => {
+    setSearchTerm(term);
+    await fetchEvaluations(1, term, periodFilter);
+  };
+
+  const handlePeriodFilter = async (value = '') => {
+    setPeriodFilter(value);
+    await fetchEvaluations(1, searchTerm, value);
   };
 
   useEffect(() => {
@@ -59,16 +91,20 @@ const useFetchEvaluations = () => {
     fetchEvaluations();
   }, [getToken]);
 
-  return { 
-    evaluations, 
-    count, 
-    next, 
-    previous, 
-    currentPage, 
-    loading, 
-    paginationLoading, // Expor o estado de carregamento da paginação
-    error, 
-    fetchEvaluations 
+  return {
+    evaluations,
+    count,
+    next,
+    previous,
+    currentPage,
+    loading,
+    paginationLoading,
+    error,
+    fetchEvaluations,
+    searchTerm,
+    handleSearch,
+    periodFilter,
+    handlePeriodFilter,
   };
 };
 

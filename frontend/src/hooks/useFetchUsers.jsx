@@ -15,8 +15,9 @@ const useFetchUsers = () => {
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
+  const [userTypeFilter, setUserTypeFilter] = useState('all');
 
-  const fetchUsers = async (page = 1, search = searchTerm) => {
+  const fetchUsers = async (page = 1, search = searchTerm, type = userTypeFilter) => {
     const token = getToken();
 
     if (!token) {
@@ -37,6 +38,9 @@ const useFetchUsers = () => {
       const params = new URLSearchParams({ page: String(page) });
       if (search) {
         params.append('search', search);
+      }
+      if (type && type !== 'all') {
+        params.append('user_type', type);
       }
 
       const response = await axios.get(`/api/users/list/?${params.toString()}`, {
@@ -167,7 +171,12 @@ const useFetchUsers = () => {
 
   const handleSearch = async (term = '') => {
     setSearchTerm(term);
-    await fetchUsers(1, term);
+    await fetchUsers(1, term, userTypeFilter);
+  };
+
+  const handleUserTypeFilter = async (type = 'all') => {
+    setUserTypeFilter(type);
+    await fetchUsers(1, searchTerm, type);
   };
 
   useEffect(() => {
@@ -193,6 +202,8 @@ const useFetchUsers = () => {
     deleteUser,
     searchTerm,
     handleSearch,
+    userTypeFilter,
+    handleUserTypeFilter,
   };
 };
 

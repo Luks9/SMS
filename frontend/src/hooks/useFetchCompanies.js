@@ -14,16 +14,23 @@ const useFetchCompanies = () => {
     const [loading, setLoading] = useState(false);
     const [paginationLoading, setPaginationLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [searchTerm, setSearchTerm] = useState('');
 
-  const fetchCompanies = async (page = 1) => {
+  const fetchCompanies = async (page = 1, search = searchTerm) => {
     try {
-      if (page === 1) {
+      const shouldShowSkeleton = page === 1 && companies.length === 0;
+      if (shouldShowSkeleton) {
         setLoading(true);
       } else {
         setPaginationLoading(true);
       }
       
-      const response = await axios.get(`/api/companies/?page=${page}`,{
+      const params = new URLSearchParams({ page: String(page) });
+      if (search) {
+        params.append('search', search);
+      }
+
+      const response = await axios.get(`/api/companies/?${params.toString()}`,{
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -64,7 +71,7 @@ const useFetchCompanies = () => {
           Authorization: `Bearer ${token}`,
         },
       });
-      await fetchCompanies(currentPage);
+      await fetchCompanies(currentPage, searchTerm);
       setError(null);
     } catch (err) {
       setError('Erro ao criar empresa');
@@ -80,7 +87,7 @@ const useFetchCompanies = () => {
           Authorization: `Bearer ${token}`,
         },
       });
-      await fetchCompanies(currentPage);
+      await fetchCompanies(currentPage, searchTerm);
       setError(null);
     } catch (err) {
       setError('Erro ao atualizar empresa');
@@ -96,12 +103,14 @@ const useFetchCompanies = () => {
           Authorization: `Bearer ${token}`,
         },
       });
-      await fetchCompanies(currentPage);
+      await fetchCompanies(currentPage, searchTerm);
       setError(null);
     } catch (err) {
-      setError('Erro ao deletar empresa');
+      const detail = err.response?.data?.detail;
+      const message = detail || 'Erro ao deletar empresa';
+      setError(message);
       console.error(err);
-      throw err;
+      throw new Error(message);
     }
   };
 
@@ -109,6 +118,11 @@ const useFetchCompanies = () => {
     fetchCompanies();
     fetchUsers();
   }, []);
+
+  const handleSearch = async (term = '') => {
+    setSearchTerm(term);
+    await fetchCompanies(1, term);
+  };
 
   return {
     companies,
@@ -123,7 +137,9 @@ const useFetchCompanies = () => {
     fetchCompanies,
     createCompany,
     updateCompany,
-    deleteCompany
+    deleteCompany,
+    searchTerm,
+    handleSearch
   };
 };
 

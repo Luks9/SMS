@@ -23,6 +23,8 @@ const Usuarios = () => {
     error,
     searchTerm,
     handleSearch,
+    userTypeFilter,
+    handleUserTypeFilter,
     fetchUsers,
     updateUser,
     manageUserGroups
@@ -41,7 +43,9 @@ const Usuarios = () => {
     fetchCompanies,
     createCompany,
     updateCompany,
-    deleteCompany
+    deleteCompany,
+    searchTerm: companySearchTerm,
+    handleSearch: handleCompanySearch
   } = useFetchCompanies();
 
   const [selectedUser, setSelectedUser] = useState(null);
@@ -104,7 +108,7 @@ const Usuarios = () => {
   };
 
   const handleCompanyPageChange = (page) => {
-    fetchCompanies(page);
+    fetchCompanies(page, companySearchTerm);
   };
 
   const handleCreateCompany = () => {
@@ -150,6 +154,8 @@ const Usuarios = () => {
               paginationLoading={paginationLoading}
               searchValue={searchTerm}
               onSearch={handleSearch}
+              filterValue={userTypeFilter}
+              onFilterChange={handleUserTypeFilter}
             />
 
             {/* Paginação de Usuários */}
@@ -212,11 +218,14 @@ const Usuarios = () => {
               </div>
             )}
 
-            <CompanyTable 
+            <CompanyTable
               companies={companies}
               loading={companyLoading}
               onEdit={handleEditCompany}
               onDelete={handleDeleteCompany}
+              paginationLoading={companyPaginationLoading}
+              searchValue={companySearchTerm}
+              onSearch={handleCompanySearch}
             />
 
             {/* Paginação de Empresas */}
