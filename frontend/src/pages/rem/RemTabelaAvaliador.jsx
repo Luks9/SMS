@@ -26,6 +26,11 @@ const RemTabelaAvaliador = ({ data, loading }) => {
   const paginatedData = data.slice(startIndex, startIndex + itemsPerPage);
   const totalPages = Math.ceil(data.length / itemsPerPage);
 
+  const formatNumber = (value) => {
+    if (value === null || value === undefined || value === 'N/A') return 'N/A';
+    return String(value).replace('.', ',');
+  };
+
   if (loading) {
     return <p className="has-text-centered">Carregando...</p>;
   }
@@ -69,12 +74,12 @@ const RemTabelaAvaliador = ({ data, loading }) => {
                 <tr key={index}>
                   <td>{item.rem?.company_name || 'Empresa Desconhecida'}</td>
                   <td>{item.rem.periodo ? item.rem.periodo.slice(5, 7) + '-' + item.rem.periodo.slice(0, 4) : 'N/A'}</td>
-                  <td>{item.rem.empregados || 'N/A'}</td>
-                  <td>{item.rem.horas_homem_exposicao || 'N/A'}</td>
-                  <td>{item.consumo_diesel?.diesel_consumido || 'N/A'}</td>
-                  <td>{item.funcionarios_demitidos?.funcionarios_demitidos || 'N/A'}</td>
-                  <td>{item.rem.fatalidades || 'N/A'}</td>
-                  <td>{item.rem.gravidade || 'N/A'}</td>
+                  <td>{formatNumber(item.rem.empregados)}</td>
+                  <td>{formatNumber(item.rem.horas_homem_exposicao)}</td>
+                  <td>{formatNumber(item.consumo_diesel?.diesel_consumido)}</td>
+                  <td>{formatNumber(item.funcionarios_demitidos?.funcionarios_demitidos)}</td>
+                  <td>{formatNumber(item.rem.fatalidades)}</td>
+                  <td>{formatNumber(item.rem.gravidade)}</td>
                   <td>
                     <button
                       className="button is-small is-info"
@@ -136,92 +141,91 @@ const RemTabelaAvaliador = ({ data, loading }) => {
                   </tr>
                   <tr>
                     <th>Empregados</th>
-                    <td>{selectedRecord.rem.empregados || 'N/A'}</td>
+                    <td>{formatNumber(selectedRecord.rem.empregados)}</td>
                   </tr>
                   <tr>
                     <th>Horas Homem Exposição</th>
-                    <td>{selectedRecord.rem.horas_homem_exposicao || 'N/A'}</td>
+                    <td>{formatNumber(selectedRecord.rem.horas_homem_exposicao)}</td>
                   </tr>
                   <tr>
                     <th>Fatalidades</th>
-                    <td>{selectedRecord.rem.fatalidades || 'N/A'}</td>
+                    <td>{formatNumber(selectedRecord.rem.fatalidades)}</td>
                   </tr>
                   <tr>
                     <th>Acidentes com Afastamento Típicos</th>
-                    <td>{selectedRecord.rem.acidentes_com_afastamento_tipicos || 'N/A'}</td>
+                    <td>{formatNumber(selectedRecord.rem.acidentes_com_afastamento_tipicos)}</td>
                   </tr>
                   <tr>
                     <th>Tratamento Médico</th>
-                    <td>{selectedRecord.rem.tratamento_medico || 'N/A'}</td>
+                    <td>{formatNumber(selectedRecord.rem.tratamento_medico)}</td>
                   </tr>
                   <tr>
                     <th>Trabalho Restrito</th>
-                    <td>{selectedRecord.rem.trabalho_restrito || 'N/A'}</td>
+                    <td>{formatNumber(selectedRecord.rem.trabalho_restrito)}</td>
                   </tr>
                   <tr>
                     <th>Primeiros Socorros</th>
-                    <td>{selectedRecord.rem.primeiros_socorros || 'N/A'}</td>
+                    <td>{formatNumber(selectedRecord.rem.primeiros_socorros)}</td>
                   </tr>
                   <tr>
                     <th>Dias Perdidos Debitados</th>
-                    <td>{selectedRecord.rem.dias_perdidos_debitados || 'N/A'}</td>
+                    <td>{formatNumber(selectedRecord.rem.dias_perdidos_debitados)}</td>
                   </tr>
                   <tr>
                     <th>Acidentados Registráveis</th>
-                    <td>{selectedRecord.rem.acidentados_registraveis || 'N/A'}</td>
+                    <td>{formatNumber(selectedRecord.rem.acidentados_registraveis)}</td>
                   </tr>
                   <tr>
                     <th>Acidentes com Afastamento</th>
-                    <td>{selectedRecord.rem.acidentes_com_afastamento || 'N/A'}</td>
+                    <td>{formatNumber(selectedRecord.rem.acidentes_com_afastamento)}</td>
                   </tr>
                   <tr>
                     <th>Acidentes sem Afastamento</th>
-                    <td>{selectedRecord.rem.acidentes_sem_afastamento || 'N/A'}</td>
+                    <td>{formatNumber(selectedRecord.rem.acidentes_sem_afastamento)}</td>
                   </tr>
                   <tr>
                     <th>Acidentes de Trânsito</th>
-                    <td>{selectedRecord.rem.acidentes_transito || 'N/A'}</td>
+                    <td>{formatNumber(selectedRecord.rem.acidentes_transito)}</td>
                   </tr>
                   <tr>
                     <th>Outros</th>
-                    
-                    <td>{selectedRecord.rem.outros || 'N/A'}</td>
+                    <td>{formatNumber(selectedRecord.rem.outros)}</td>
                   </tr>
                   <tr>
                     <th>Total de Incidentes Registráveis</th>
-                    <td>{selectedRecord.rem.total_incidentes_registraveis || 'N/A'}</td>
+                    <td>{formatNumber(selectedRecord.rem.total_incidentes_registraveis)}</td>
                   </tr>
                   <tr>
                     <th>Taxa com Afastamento</th>
-                    <td>{selectedRecord.rem.taxa_com_afastamento || 'N/A'}</td>
+                    <td>{formatNumber(selectedRecord.rem.taxa_com_afastamento)}</td>
                   </tr>
                   <tr>
                     <th>Taxa sem Afastamento</th>
-                    <td>{selectedRecord.rem.taxa_sem_afastamento || 'N/A'}</td>
+                    <td>{formatNumber(selectedRecord.rem.taxa_sem_afastamento)}</td>
                   </tr>
                   <tr>
                     <th>Incidência</th>
-                    <td>{selectedRecord.rem.incidencia || 'N/A'}</td>
+                    <td>{formatNumber(selectedRecord.rem.incidencia)}</td>
                   </tr>
                   <tr>
                     <th>Gravidade</th>
-                    <td>{selectedRecord.rem.gravidade || 'N/A'}</td>
+                    <td>{formatNumber(selectedRecord.rem.gravidade)}</td>
                   </tr>
                   <tr>
                     <th>LMA NCA</th>
-                    <td>{selectedRecord.rem.lma_nca || 'N/A'}</td>
+                    <td>{formatNumber(selectedRecord.rem.lma_nca)}</td>
                   </tr>
                   <tr>
                     <th>LMA TFCA</th>
-                    <td>{selectedRecord.rem.lma_tfca || 'N/A'}</td>
+                    <td>{formatNumber(selectedRecord.rem.lma_tfca)}</td>
                   </tr>
                   <tr>
                     <th>Consumo de Diesel</th>
-                    <td>{selectedRecord.consumo_diesel?.diesel_consumido || 'N/A'}</td>
+                    <td>{formatNumber(selectedRecord.consumo_diesel?.diesel_consumido)}</td>
                   </tr>
                   <tr>
                     <th>Funcionários Demitidos</th>
-                    <td>{selectedRecord.funcionarios_demitidos?.funcionarios_demitidos || 'N/A'}</td>
+                    <td>{formatNumber(selectedRecord.funcionarios_demitidos?.funcionarios_demitidos)}</td>
                   </tr>
                 </tbody>
               </table>

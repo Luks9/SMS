@@ -85,6 +85,15 @@ class CompanyViewSet(viewsets.ModelViewSet):
 
     @extend_schema(
         description="Retorna todas as empresas do usuário sem paginação",
+        parameters=[
+            OpenApiParameter(
+                name='is_active',
+                description='Filtrar empresas por status ativo. Quando informado, o valor padrão é true.',
+                required=False,
+                type=OpenApiTypes.BOOL,
+                location=OpenApiParameter.QUERY,
+            ),
+        ], 
         responses={200: CompanySerializer(many=True)}
     )
     @action(detail=False, methods=['get'], url_path='all')
@@ -93,6 +102,8 @@ class CompanyViewSet(viewsets.ModelViewSet):
         Endpoint para retornar todas as empresas sem paginação
         """ 
         pole_id = self.request.headers.get('X-Polo-Id')
+        is_active_param = request.query_params.get('is_active')
+
         
         if self.request.user.is_superuser:
             if pole_id:
@@ -101,6 +112,13 @@ class CompanyViewSet(viewsets.ModelViewSet):
                 companies = Company.objects.all().order_by('name')
         else:
             companies = Company.objects.filter(users=self.request.user).order_by('name')
+
+        if is_active_param is not None:
+            should_filter_active = is_active_param.lower() in ['true', '1', 't', 'yes', 'on', '', True]
+            if should_filter_active:
+                companies = companies.filter(is_active=True)
+            else:
+                companies = companies.filter(is_active=False)
             
         serializer = CompanySerializer(companies, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -209,6 +227,66 @@ class EvaluationViewSet(viewsets.ModelViewSet):
             'message': 'Score atualizado com sucesso.'
         }, status=status.HTTP_200_OK)
     
+
+    def create(self, request, *args, **kwargs):
+        """
+        Cria múltiplas avaliações em uma única transação, com validação de duplicatas
+        """
+        companies = request.data.get('companies', [])
+        if not companies:
+            return super().create(request, *args, **kwargs)
+
+        created_evaluations = []
+
+        try:
+            base_data = request.data.copy()
+            del base_data['companies']
+            form_id = base_data.get('form')
+            period = base_data.get('period')
+
+            # Verifica duplicatas antes de iniciar a transação
+            duplicate_companies = []
+            for company_id in companies:
+                existing = Evaluation.objects.filter(
+                    company_id=company_id,
+                    form_id=form_id,
+                    period__startswith=period[:7], # Compara apenas ano e mês
+                    is_active=True
+                ).exists()
+                
+                if existing:
+                    company = Company.objects.get(id=company_id)
+                    duplicate_companies.append(company.name)
+
+            if duplicate_companies:
+                return Response({
+                    'error': 'Avaliações duplicadas detectadas',
+                    'message': f'Já existem avaliações para as empresas: {", ".join(duplicate_companies)} no período selecionado com o mesmo formulário.',
+                    'duplicate_companies': duplicate_companies
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # Se não houver duplicatas, prossegue com a criação
+            from django.db import transaction
+            with transaction.atomic():
+                for company_id in companies:
+                    evaluation_data = base_data.copy()
+                    evaluation_data['company'] = company_id
+                    
+                    serializer = self.get_serializer(data=evaluation_data)
+                    serializer.is_valid(raise_exception=True)
+                    self.perform_create(serializer)
+                    created_evaluations.append(serializer.data)
+
+            return Response({
+                'created': created_evaluations,
+                'message': f'Criadas {len(created_evaluations)} avaliações com sucesso'
+            }, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            return Response({
+                'error': str(e),
+                'message': 'Erro ao criar avaliações'
+            }, status=status.HTTP_400_BAD_REQUEST)
 
     def get_queryset(self):
         queryset = Evaluation.objects.all()
