@@ -16,10 +16,11 @@ class ScoreResponseSerializer(serializers.Serializer):
 class CompanySerializer(serializers.ModelSerializer):
     cnpj_display = serializers.SerializerMethodField()
     users_list = serializers.SerializerMethodField()
-    
+    has_evaluations = serializers.SerializerMethodField()
+
     class Meta:
         model = Company
-        fields = ['id', 'name', 'cnpj', 'cnpj_display', 'is_active', 'users', 'users_list', 'dominio']
+        fields = ['id', 'name', 'cnpj', 'cnpj_display', 'is_active', 'users', 'users_list', 'dominio', 'has_evaluations']
     
     def get_cnpj_display(self, obj):
         """
@@ -32,6 +33,12 @@ class CompanySerializer(serializers.ModelSerializer):
         Retorna lista dos usuários associados à empresa
         """
         return [{'id': user.id, 'username': user.username} for user in obj.users.all()]
+    
+    def get_has_evaluations(self, obj):
+        annotated_value = getattr(obj, 'has_evaluations', None)
+        if annotated_value is None:
+            return obj.evaluations.filter(is_active=True).exists()
+        return annotated_value
     
     def to_representation(self, instance):
         """

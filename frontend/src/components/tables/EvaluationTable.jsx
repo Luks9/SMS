@@ -19,14 +19,29 @@ import { AuthContext } from '../../context/AuthContext';
 import Pagination from './Pagination'; 
 import 'moment/locale/pt-br';
 import { STATUS_CHOICES } from '../../utils/StatusChoices';
+import TableSearchInput from '../inputs/TableSearchInput';
 
 moment.locale('pt-br');
 
-const EvaluationTable = ({ evaluations, refreshEvaluations, count, currentPage, fetchEvaluations, paginationLoading }) => {
+const EvaluationTable = ({
+  evaluations,
+  refreshEvaluations,
+  count,
+  currentPage,
+  fetchEvaluations,
+  paginationLoading,
+  searchValue = '',
+  onSearch = () => {},
+  periodValue = '',
+  onPeriodChange = () => {},
+}) => {
   const { getToken } = useContext(AuthContext);
   const navigate = useNavigate();
   const [loadingCalculation, setLoadingCalculation] = useState(null);
   const itemsPerPage = 10;
+  const handlePeriodInputChange = (event) => {
+    onPeriodChange(event.target.value);
+  };
 
   const calculate = async (evaluationId) => {
     setLoadingCalculation(evaluationId);
@@ -38,7 +53,7 @@ const EvaluationTable = ({ evaluations, refreshEvaluations, count, currentPage, 
         },
       });
       alert('Nota calculada');
-      refreshEvaluations(currentPage);
+      refreshEvaluations(currentPage, searchValue, periodValue);
     } catch (error) {
       console.error('Erro ao calcular a avaliação:', error);
     } finally {
@@ -57,7 +72,7 @@ const EvaluationTable = ({ evaluations, refreshEvaluations, count, currentPage, 
             Authorization: `Bearer ${token}`,
           },
         });
-        refreshEvaluations(currentPage);
+        refreshEvaluations(currentPage, searchValue, periodValue);
       } catch (error) {
         console.error('Erro ao excluir a avaliação:', error);
       }
@@ -104,6 +119,44 @@ const EvaluationTable = ({ evaluations, refreshEvaluations, count, currentPage, 
 
   return (
     <div style={{ position: 'relative' }}>
+      <div
+        className="mb-4"
+        style={{
+          display: 'flex',
+          gap: '1rem',
+          justifyContent: 'flex-end',
+          flexWrap: 'wrap',
+          alignItems: 'flex-end',
+        }}
+      >
+        <div style={{ minWidth: '180px' }}>
+          <label
+            className="label is-small"
+            htmlFor="evaluation-period-filter"
+            style={{ marginBottom: '0.25rem' }}
+          >
+            Periodo
+          </label>
+          <input
+            id="evaluation-period-filter"
+            className="input is-small"
+            type="month"
+            value={periodValue}
+            onChange={handlePeriodInputChange}
+            disabled={paginationLoading}
+          />
+        </div>
+
+        <div style={{ maxWidth: '300px' }}>
+          <TableSearchInput
+            value={searchValue}
+            onSearch={onSearch}
+            placeholder="Buscar por empresa..."
+            isLoading={paginationLoading}
+          />
+        </div>
+      </div>
+
       {/* Indicador de carregamento durante a troca de páginas */}
       {paginationLoading && (
         <div
@@ -253,7 +306,7 @@ const EvaluationTable = ({ evaluations, refreshEvaluations, count, currentPage, 
         totalItems={count}
         itemsPerPage={itemsPerPage}
         currentPage={currentPage}
-        onPageChange={(page) => fetchEvaluations(page)}
+        onPageChange={(page) => fetchEvaluations(page, searchValue, periodValue)}
         disabled={paginationLoading} // Passa o estado de carregamento para a paginação
       />
     </div>
