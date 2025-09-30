@@ -95,6 +95,8 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('userType');
     localStorage.removeItem('companyId');
     localStorage.removeItem('selectedCompany');
+    localStorage.removeItem('is_staff');
+
     delete axios.defaults.headers.common.Authorization;
     navigate('/login');
   }, [navigate, setActivePole, setPoles]);
