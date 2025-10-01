@@ -67,7 +67,7 @@ const useFetchUsers = () => {
         setPrevious(null);
       }
     } finally {
-      if (shouldShowSkeleton) {
+      if (page === 1) {
         setLoading(false);
       }
       setPaginationLoading(false);

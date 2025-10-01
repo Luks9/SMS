@@ -15,7 +15,7 @@ import StepConfirm from './SendEvaluationSteps/StepConfirm';
 const ALL_COMPANIES_OPTION = { value: 'all', label: 'Selecionar Todos' };
 
 const STEPS = [
-  { id: 1, title: 'Periodo', description: 'Selecionar periodo e formulario' },
+  { id: 1, title: 'Período', description: 'Selecionar período e formulário' },
   { id: 2, title: 'Empresas', description: 'Escolher empresas participantes' },
   { id: 3, title: 'Confirmar', description: 'Revisar dados e enviar' },
 ];
@@ -122,7 +122,7 @@ const SendEvaluationForm = ({ forms, companies, onEvaluationSent }) => {
       }
 
       if (!formData.form) {
-        setMessage('Por favor, selecione um formulario.');
+        setMessage('Por favor, selecione um formulário.');
         setMessageType('error');
         return false;
       }
@@ -156,7 +156,7 @@ const SendEvaluationForm = ({ forms, companies, onEvaluationSent }) => {
     event.preventDefault();
 
     if (!formData.form) {
-      setMessage('Por favor, selecione um formulario.');
+      setMessage('Por favor, selecione um formulário.');
       setMessageType('error');
       setCurrentStep(1);
       return;
@@ -213,7 +213,7 @@ const SendEvaluationForm = ({ forms, companies, onEvaluationSent }) => {
         const duplicateCompanies = error.response.data.duplicate_companies;
         const duplicateMessage = (
           <div>
-            <p>As seguintes empresas ja possuem avaliacoes para este periodo e formulario:</p>
+            <p>As seguintes empresas já possuem avaliações para este período e formulário:</p>
             <ul style={{ listStyle: 'disc', marginLeft: '20px', marginTop: '10px' }}>
               {duplicateCompanies.map((company, index) => (
                 <li key={index}>{company}</li>
