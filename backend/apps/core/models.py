@@ -3,19 +3,47 @@
 from django.contrib.auth.models import User
 from django.db import models
 from django.utils import timezone
-import os
+import os, re
 import uuid
 from .utils import format_cnpj
 
+def sanitize_filename(value: str) -> str:
+    """Remove caracteres inválidos para nome de arquivo"""
+    value = value.strip().replace(" ", "_")
+    return re.sub(r"[^A-Za-z0-9._-]", "", value)
+
 def rename_attachment_respondent(instance, filename):
     ext = filename.split('.')[-1]
-    new_filename = f"{uuid.uuid4()}.{ext}"
-    return os.path.join('attachments', 'respondent', timezone.now().strftime("%Y/%m"), new_filename)
+
+    # Período da avaliação no formato YYYYMM
+    period_str = instance.evaluation.period.strftime("%Y%m") if instance.evaluation.period else "no-period"
+
+    # Nome da empresa (limpo)
+    company_name = sanitize_filename(instance.company.name)
+
+    # ID da pergunta
+    question_id = instance.question.id if instance.question_id else "no-question"
+
+    new_filename = f"{period_str}_{company_name}_Q{question_id}.{ext}"
+
+    return os.path.join("attachments", "respondent", timezone.now().strftime("%Y/%m"), new_filename)
+
 
 def rename_attachment_evaluator(instance, filename):
     ext = filename.split('.')[-1]
-    new_filename = f"{uuid.uuid4()}.{ext}"
-    return os.path.join('attachments', 'evaluator', timezone.now().strftime("%Y/%m"), new_filename)
+
+    # Período da avaliação no formato YYYYMM
+    period_str = instance.evaluation.period.strftime("%Y%m") if instance.evaluation.period else "no-period"
+
+    # Nome da empresa (limpo)
+    company_name = sanitize_filename(instance.company.name)
+
+    # ID da pergunta
+    question_id = instance.question.id if instance.question_id else "no-question"
+
+    new_filename = f"{period_str}_{company_name}_Q{question_id}.{ext}"
+
+    return os.path.join("attachments", "evaluator", timezone.now().strftime("%Y/%m"), new_filename)
 
 
 class Company(models.Model):

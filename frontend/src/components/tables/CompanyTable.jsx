@@ -92,9 +92,9 @@ const CompanyTable = ({
               <tr>
                 <th>Nome</th>
                 <th>CNPJ</th>
-                <th>Dominio</th>
+                <th>Domínio</th>
                 <th>Status</th>
-                <th colSpan={2}>Acoes</th>
+                <th colSpan={2}>Ações</th>
               </tr>
             </thead>
             <tbody>
