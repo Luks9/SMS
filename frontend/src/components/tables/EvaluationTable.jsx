@@ -135,7 +135,7 @@ const EvaluationTable = ({
             htmlFor="evaluation-period-filter"
             style={{ marginBottom: '0.25rem' }}
           >
-            Periodo
+            Período
           </label>
           <input
             id="evaluation-period-filter"

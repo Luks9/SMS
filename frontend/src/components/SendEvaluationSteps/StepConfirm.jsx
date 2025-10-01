@@ -7,8 +7,8 @@ const StepConfirm = ({ period, formName, companies, validUntil, onValidUntilChan
         <h3 className="title is-5">Revise as informacoes antes de enviar</h3>
         <div className="columns">
           <div className="column is-half">
-            <p><strong>Periodo:</strong> {period}</p>
-            <p><strong>Formulario:</strong> {formName || 'Formulario nao selecionado'}</p>
+            <p><strong>Período:</strong> {period}</p>
+            <p><strong>Formulário:</strong> {formName || 'Formulário não selecionado'}</p>
           </div>
           <div className="column is-half">
             <div className="field">
@@ -24,7 +24,7 @@ const StepConfirm = ({ period, formName, companies, validUntil, onValidUntilChan
                   required
                 />
               </div>
-              <p className="help">Defina ate quando o formulario pode ser respondido.</p>
+              <p className="help">Defina até quando o formulário pode ser respondido.</p>
             </div>
           </div>
         </div>

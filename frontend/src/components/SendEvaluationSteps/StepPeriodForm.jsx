@@ -7,7 +7,7 @@ const StepPeriodForm = ({ period, onPeriodChange, formOptions, selectedFormOptio
       <div className="columns is-variable is-5">
         <div className="column">
           <div className="field">
-            <label className="label">Periodo (Mes e Ano)</label>
+            <label className="label">Período (Mês e Ano)</label>
             <div className="control">
               <input
                 className="input"
@@ -18,12 +18,12 @@ const StepPeriodForm = ({ period, onPeriodChange, formOptions, selectedFormOptio
                 required
               />
             </div>
-            <p className="help">Selecione o mes que recebera a avaliacao.</p>
+            <p className="help">Selecione o mês que receberá a avaliação.</p>
           </div>
         </div>
         <div className="column">
           <div className="field">
-            <label className="label">Formulario</label>
+            <label className="label">Formulário</label>
             <div className="control">
               <Select
                 name="form"
@@ -32,7 +32,7 @@ const StepPeriodForm = ({ period, onPeriodChange, formOptions, selectedFormOptio
                 classNamePrefix="select"
                 onChange={onFormChange}
                 value={selectedFormOption}
-                placeholder="Selecione o formulario"
+                placeholder="Selecione o formulário"
               />
             </div>
           </div>

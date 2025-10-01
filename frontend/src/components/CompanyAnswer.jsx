@@ -168,7 +168,6 @@ const CompanyAnswer = () => {
       )}
 
       <h1 className="title">Responder Avaliação</h1>
-
       <div className="tabs is-boxed">
         <ul>
           {Object.keys(groupedQuestions).map((categoryName) => (
@@ -198,7 +197,7 @@ const CompanyAnswer = () => {
                   <div key={question.id} className="box">
                     <div className="columns is-vcentered">
                       <div className="column">
-                        <h2 className="subtitle">{question.question}</h2>
+                        <h2 className="subtitle">Q{question.id} - {question.question}</h2>
                         <p className="mb-4">{question.recommendation}</p>
                       </div>
 
@@ -286,6 +285,9 @@ const CompanyAnswer = () => {
                                 </span>
                               </label>
                             </div>
+                             <p className="help is-info" style={{ marginTop: "0.5rem" }}>
+                                Se tiver mais de um anexo, envie em um único <strong>.zip</strong>.
+                            </p>
                           </div>
                         </div>
                       </div>
