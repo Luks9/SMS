@@ -113,9 +113,9 @@ const EvaluationTable = ({
     navigate(path);
   };
 
-  if (evaluations.length === 0 && !paginationLoading) {
-    return <p>Nenhuma avaliação encontrada.</p>;
-  }
+  // if (evaluations.length === 0 && !paginationLoading) {
+  //   return <p>Nenhuma avaliação encontrada.</p>;
+  // }
 
   return (
     <div style={{ position: 'relative' }}>
