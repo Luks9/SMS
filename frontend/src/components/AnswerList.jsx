@@ -133,30 +133,44 @@ const AnswerList = ({ questions, fetchEvaluationDetails }) => {
   };
 
   const handleDownload = async (answerId, fileName) => {
-    try {
-      const token = getToken();
-      const response = await axios.get(`/api/download/attachment_respondent/${answerId}/`, {
-        headers: {
-          Authorization: `Bearer ${token}`,  // Se for necessário adicionar autenticação
-        },
-        responseType: 'blob',  // Importante para garantir que o arquivo seja tratado corretamente
-      });
+  try {
+    const token = getToken();
+    const response = await axios.get(`/api/download/attachment_respondent/${answerId}/`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      responseType: 'blob',
+    });
 
-      // Criar uma URL para o arquivo baixado
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+    // Cria URL temporária
+    const blob = new Blob([response.data]);
+    const url = window.URL.createObjectURL(blob);
+
+    // Verifica se o arquivo é PDF
+    const isPDF =
+      fileName.toLowerCase().endsWith('.pdf') ||
+      response.headers['content-type']?.includes('pdf');
+
+    if (isPDF) {
+      // Abre o PDF em nova aba
+      window.open(url, '_blank');
+    } else {
+      // Faz download normalmente
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', fileName);  // Nome do arquivo para download
+      link.setAttribute('download', fileName);
       document.body.appendChild(link);
       link.click();
-
-      // Limpar o URL temporário
-      window.URL.revokeObjectURL(url);
       link.remove();
-    } catch (error) {
-      console.error('Erro ao baixar o arquivo:', error);
     }
-  };
+
+    // Libera o objeto da memória após um tempo
+    setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+  } catch (error) {
+    console.error('Erro ao baixar o arquivo:', error);
+  }
+};
+
 
 
   return (
@@ -195,7 +209,7 @@ const AnswerList = ({ questions, fetchEvaluationDetails }) => {
                 <div className="columns is-mobile is-vcentered">
                   <div className="column is-half">
                     <h1 className="subtitle is-5">{question.subcategory_name}</h1>
-                    <p><h2 className="subtitle is-6">{question.question}</h2></p>
+                    <p><h2 className="subtitle is-6">Q{question.id} - {question.question}</h2></p>
                     <p><strong>Resposta da empresa: </strong> 
                       <span className={`tag ${ANSWER_CHOICES_MAP[answer.answer_respondent]?.color || 'is-light'}`}>
                         {ANSWER_CHOICES_MAP[answer.answer_respondent]?.label || 'Aguardando resposta'}
