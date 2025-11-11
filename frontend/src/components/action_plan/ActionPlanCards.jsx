@@ -14,13 +14,14 @@ const ActionPlanCards = ({ actionsPlans }) => {
       <div className="columns is-multiline">
         {actionsPlans && actionsPlans.map((actionPlan) => {
           const isExpired = moment(actionPlan.end_date).isBefore(moment(), 'day'); // Verifica se a data de término está expirada
+          const createdAt = actionPlan.created_at || actionPlan.start_date;
 
           return (
             <div key={actionPlan.id} className="column is-one-third">
               <div className="card">
                 <header className="card-header">
                   <p className="card-header-title">
-                    Plano de Ação - {moment(actionPlan.created_at).format('MMM YYYY').toUpperCase()}
+                    Plano de Ação - {moment(createdAt).format('MMM YYYY').toUpperCase()}
                   </p>
                   <button className="card-header-icon" aria-label="more options">
                     <span className="icon">

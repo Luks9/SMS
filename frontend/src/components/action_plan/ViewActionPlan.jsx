@@ -6,6 +6,7 @@ import moment from 'moment';
 import Layout from '../../components/Layout';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faFileDownload } from '@fortawesome/free-solid-svg-icons';
+import { ANSWER_CHOICES_MAP } from '../../utils/AnswerChoices';
 
 
 const ViewActionPlan = () => {
@@ -84,6 +85,16 @@ const ViewActionPlan = () => {
                 {STATUS_CHOICES[actionPlan.status]?.label || actionPlan.status}
               </span>
             </p>
+            {(actionPlan.response_choice_display || actionPlan.response_choice) && (
+              <p>
+                <strong>Classificação do Avaliado:</strong>{' '}
+                {actionPlan.response_choice_display || ANSWER_CHOICES_MAP[actionPlan.response_choice]?.label}
+              </p>
+            )}
+            {actionPlan.response_date && (
+              <p><strong>Respondido em:</strong> {moment(actionPlan.response_date).format('DD/MM/YYYY')}</p>
+            )}
+            <p><strong>Resposta:</strong> {actionPlan.response_company || 'Nenhuma resposta enviada.'}</p>
             {actionPlan.attachment? (
               <p>
                 <strong>anexo: </strong>

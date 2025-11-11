@@ -6,7 +6,8 @@ import { AuthContext } from '../../context/AuthContext';
 import moment from 'moment';
 import 'moment/locale/pt-br';
 import Message from '../../components/Message';
-import useFetchPlanActionDetails from '../../hooks/useFetchPlanActionDetails'
+import useFetchPlanActionDetails from '../../hooks/useFetchPlanActionDetails';
+import { ANSWER_CHOICES } from '../../utils/AnswerChoices';
 
 moment.locale('pt-br');
 
@@ -16,6 +17,7 @@ const ActionPlanAnswerForm = () => {
     const navigate = useNavigate();
     const { actionPlan , loading} = useFetchPlanActionDetails(actionPlanId); // Estado para guardar o plano de ação
     const [responseCompany, setResponseCompany] = useState(''); // Estado para o campo response_company
+    const [responseChoice, setResponseChoice] = useState('');
     const [attachment, setAttachment] = useState(null); // Estado para o anexo
     const [fileName, setFileName] = useState('Nenhum arquivo selecionado'); // Estado para o nome do arquivo
     const [message, setMessage] = useState(''); // Estado da mensagem
@@ -24,15 +26,16 @@ const ActionPlanAnswerForm = () => {
    
     // Função para lidar com a mudança do arquivo selecionado
     const handleFileChange = (file) => {
-      setAttachment(file);
+      setAttachment(file || null);
       setFileName(file ? file.name : 'Nenhum arquivo selecionado'); // Atualiza o nome do arquivo
     };
 
     useEffect(() => {
       if (actionPlan) {
-        setResponseCompany(actionPlan.response_company);
+        setResponseCompany(actionPlan.response_company || '');
+        setResponseChoice(actionPlan.response_choice || '');
       }
-    }, [actionPlanId]);
+    }, [actionPlan]);
   
     // Função para lidar com a submissão do formulário
     const handleSubmit = async (e) => {
@@ -40,6 +43,7 @@ const ActionPlanAnswerForm = () => {
       const token = getToken();
       const formData = new FormData(); // Usamos FormData para enviar arquivos
       formData.append('response_company', responseCompany);
+      formData.append('response_choice', responseChoice || '');
       if (attachment) {
         formData.append('attachment', attachment); // Adiciona o arquivo apenas se for selecionado
       }
@@ -76,11 +80,19 @@ const ActionPlanAnswerForm = () => {
         <div className="box">
           {actionPlan ? (
             <>
-              <h1 className="title">Plano de Ação - {moment(actionPlan.created_at).format('MMMM YYYY')}</h1>
+              <h1 className="title">
+                Plano de Ação - {moment(actionPlan.created_at || actionPlan.start_date).format('MMMM YYYY')}
+              </h1>
               <p><strong>Descrição:</strong> {actionPlan.description}</p>
-              <p><strong>Responsável:</strong> {actionPlan.responsible_name}</p>
+              <p><strong>Responsável:</strong> {actionPlan.responsible_name || 'Não informado'}</p>
               <p><strong>Data de Término:</strong> {moment(actionPlan.end_date).format('DD/MM/YYYY')}</p>
               <p><strong>Status:</strong> {actionPlan.status}</p>
+              {actionPlan.response_choice_display && (
+                <p><strong>Classificação atual:</strong> {actionPlan.response_choice_display}</p>
+              )}
+              {actionPlan.response_date && (
+                <p><strong>Respondido em:</strong> {moment(actionPlan.response_date).format('DD/MM/YYYY')}</p>
+              )}
               
               <hr />
   
@@ -91,6 +103,25 @@ const ActionPlanAnswerForm = () => {
               )}
   
               <form onSubmit={handleSubmit}>
+                <div className="field">
+                  <label className="label">Classificação do Avaliado</label>
+                  <div className="control">
+                    <div className="select is-fullwidth">
+                      <select
+                        value={responseChoice}
+                        onChange={(e) => setResponseChoice(e.target.value)}
+                      >
+                        <option value="">Selecione uma opção</option>
+                        {ANSWER_CHOICES.map((choice) => (
+                          <option key={choice.value} value={choice.value}>
+                            {choice.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="field">
                   <label className="label">Resposta da Empresa</label>
                   <div className="control">
@@ -120,9 +151,6 @@ const ActionPlanAnswerForm = () => {
                         </span>
                         <span>Download do Anexo</span>
                       </a>
-                      <span className="file-name" style={{ marginLeft: '10px' }}>
-                        {fileName}
-                      </span>
                     </div>
                   )}
   
