@@ -130,7 +130,6 @@ const CompanyEditModal = ({ company, isOpen, onClose, onSave, onCreate }) => {
                 />
               </div>
             </div>
-
             <div className="field">
               <label className="label">Domínio</label>
               <div className="control">
@@ -140,10 +139,14 @@ const CompanyEditModal = ({ company, isOpen, onClose, onSave, onCreate }) => {
                   name="dominio"
                   value={formData.dominio}
                   onChange={handleInputChange}
+                  placeholder="ex: empresa.com.br"
                 />
               </div>
+              <p className="help is-info">
+                Informe apenas o texto que vem <strong>após o "@"</strong> do e-mail corporativo.  
+                <br />Exemplo: se o e-mail for <em>usuario@empresa.com.br</em>, o domínio é <code>empresa.com.br</code>.
+              </p>
             </div>
-
             <div className="field">
               <div className="control">
                 <label className="checkbox">
