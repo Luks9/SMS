@@ -7,6 +7,13 @@ import os, re
 import uuid
 from .utils import format_cnpj
 
+ANSWER_CHOICES = [
+    ('NA', 'Não Aplicável'),
+    ('C', 'Conforme'),
+    ('NC', 'Não Conforme'),
+    ('A', 'Em Análise'),
+]
+
 def sanitize_filename(value: str) -> str:
     """Remove caracteres inválidos para nome de arquivo"""
     value = value.strip().replace(" ", "_")
@@ -139,13 +146,6 @@ class Evaluation(models.Model):
 
 
 class Answer(models.Model):
-    ANSWER_CHOICES = [
-        ('NA', 'Não Aplicável'),
-        ('C', 'Conforme'),
-        ('NC', 'Não Conforme'),
-        ('A', 'Em Análise'),
-    ]
-
     answer_respondent = models.CharField(max_length=2, choices=ANSWER_CHOICES)
     attachment_respondent = models.FileField(upload_to=rename_attachment_respondent, blank=True, null=True)
     date_respondent = models.DateField(blank=True, null=True)
@@ -191,18 +191,22 @@ def rename_attachment_action_plan(instance, filename):
     return os.path.join('attachments', 'action_plan', timezone.now().strftime("%Y/%m"), new_filename)
 
 class ActionPlan(models.Model):
+    RESPONSE_STATUS = [
+        ('IN_PROGRESS', 'Em Progresso'),
+        ('COMPLETED', 'Concluído'),
+        ('PENDING', 'Pendente'),
+    ]
+
     company = models.ForeignKey(Company, on_delete=models.PROTECT, related_name='action_plans')
     evaluation = models.ForeignKey(Evaluation, on_delete=models.CASCADE, related_name='action_plans')
     description = models.TextField()
     response_company = models.TextField(null=True, blank=True)
+    response_choice = models.CharField(max_length=2, choices=ANSWER_CHOICES, null=True, blank=True)
+    response_date = models.DateField(null=True, blank=True)
     start_date = models.DateField(auto_now_add=True)
     end_date = models.DateField(null=True, blank=True)
     responsible = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
-    status = models.CharField(max_length=20, choices=[
-        ('IN_PROGRESS', 'Em Progresso'),
-        ('COMPLETED', 'Concluído'),
-        ('PENDING', 'Pendente'),
-    ], default='PENDING')
+    status = models.CharField(max_length=20, choices=RESPONSE_STATUS, default='PENDING')
     attachment = models.FileField(upload_to=rename_attachment_action_plan, blank=True, null=True)
 
     def __str__(self):

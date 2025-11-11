@@ -162,6 +162,25 @@ class EvaluationSerializer(serializers.ModelSerializer):
         # Caso não seja um POST, ou se a validação não falhou, retorna os dados
         return data
 
+    def validate_valid_until(self, value):
+        """
+        Permite que apenas usuários staff ou superusuários alterem a data de vencimento
+        após a criação da avaliação.
+        """
+        if not self.instance:
+            return value
+
+        if value == self.instance.valid_until:
+            return value
+
+        request = self.context.get('request')
+        user = getattr(request, 'user', None) if request else None
+
+        if user and (user.is_staff or user.is_superuser):
+            return value
+
+        raise serializers.ValidationError("Somente administradores podem alterar a data de vencimento.")
+
 
 
 class AnswerSerializer(serializers.ModelSerializer):
@@ -297,10 +316,30 @@ class EvaluationProgressSerializer(serializers.ModelSerializer):
 
 class ActionPlanSerializer(serializers.ModelSerializer):
     company_name = serializers.CharField(source='company.name', read_only=True)
+    responsible_name = serializers.SerializerMethodField()
+    response_choice_display = serializers.CharField(source='get_response_choice_display', read_only=True)
+    created_at = serializers.DateField(source='start_date', read_only=True)
 
     class Meta:
         model = ActionPlan
-        fields = ['id', 'company', 'evaluation', 'description', 'response_company', 'start_date', 'end_date', 'responsible', 'status', 'attachment', 'company_name']
+        fields = [
+            'id',
+            'company',
+            'company_name',
+            'evaluation',
+            'description',
+            'response_company',
+            'response_choice',
+            'response_choice_display',
+            'response_date',
+            'start_date',
+            'created_at',
+            'end_date',
+            'responsible',
+            'responsible_name',
+            'status',
+            'attachment',
+        ]
 
     def validate(self, data):
         # Verificar se o plano de ação já expirou
@@ -316,19 +355,30 @@ class ActionPlanSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("O prazo deste plano de ação já expirou.")
         
         return data
+
+    def get_responsible_name(self, obj):
+        if obj.responsible:
+            return obj.responsible.get_full_name() or obj.responsible.username
+        return None
     
     def update(self, instance, validated_data):
         """
         Atualiza o status do plano de ação para 'IN_PROGRESS' se houver resposta e o end_date não expirou
         """
-        # Atualiza os campos normalmente
+        response_fields = {'response_company', 'response_choice', 'attachment'}
+        has_response_update = any(field in validated_data for field in response_fields)
+
         instance = super().update(instance, validated_data)
-        
-        # Verifica se há uma resposta da empresa
-        if instance.response_company and instance.end_date >= timezone.now().date():
-            instance.status = "IN_PROGRESS"
-        
-        instance.save()
+
+        response_text = instance.response_company.strip() if instance.response_company else ''
+        response_provided = bool(response_text or instance.response_choice or instance.attachment)
+
+        if has_response_update and response_provided:
+            instance.response_date = timezone.now().date()
+            if instance.status == 'PENDING':
+                instance.status = 'IN_PROGRESS'
+            instance.save(update_fields=['response_date', 'status'])
+
         return instance
     
 
