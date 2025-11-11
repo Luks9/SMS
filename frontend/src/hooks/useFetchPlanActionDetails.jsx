@@ -27,10 +27,10 @@ const useFetchPlanActionDetails = (id) => {
 
   useEffect(() => {
     if (id) {
-        setLoading(true);
-        fetchActionPlanDetails ();
+      setLoading(true);
+      fetchActionPlanDetails();
     }
-  }, []);
+  }, [id]);
 
   return { actionPlan, loading, fetchActionPlanDetails };
 };

@@ -13,7 +13,10 @@ import {
   faClipboardCheck, 
   faClipboardList, 
   faCheckSquare, 
-  faClock 
+  faClock,
+  faPen,
+  faTimes,
+  faCheck
 } from '@fortawesome/free-solid-svg-icons';
 import { AuthContext } from '../../context/AuthContext';
 import Pagination from './Pagination'; 
@@ -35,10 +38,15 @@ const EvaluationTable = ({
   periodValue = '',
   onPeriodChange = () => {},
 }) => {
-  const { getToken } = useContext(AuthContext);
+  const { getToken, user } = useContext(AuthContext);
   const navigate = useNavigate();
   const [loadingCalculation, setLoadingCalculation] = useState(null);
+  const [editingDueDateId, setEditingDueDateId] = useState(null);
+  const [dueDateValue, setDueDateValue] = useState('');
+  const [savingDueDateId, setSavingDueDateId] = useState(null);
   const itemsPerPage = 10;
+  const canEditDueDate = user?.is_superuser || user?.is_staff;
+
   const handlePeriodInputChange = (event) => {
     onPeriodChange(event.target.value);
   };
@@ -111,6 +119,42 @@ const EvaluationTable = ({
 
   const redirectTo = (path) => {
     navigate(path);
+  };
+
+  const startEditingDueDate = (evaluation) => {
+    setEditingDueDateId(evaluation.id);
+    setDueDateValue(moment(evaluation.valid_until).format('YYYY-MM-DD'));
+  };
+
+  const cancelEditingDueDate = () => {
+    setEditingDueDateId(null);
+    setDueDateValue('');
+    setSavingDueDateId(null);
+  };
+
+  const saveDueDate = async (evaluationId) => {
+    if (!dueDateValue) {
+      alert('Informe uma data válida.');
+      return;
+    }
+
+    try {
+      setSavingDueDateId(evaluationId);
+      const token = getToken();
+      await axios.patch(`/api/evaluation/${evaluationId}/`, { valid_until: dueDateValue }, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      alert('Data de vencimento atualizada com sucesso.');
+      cancelEditingDueDate();
+      refreshEvaluations(currentPage, searchValue, periodValue);
+    } catch (error) {
+      console.error('Erro ao atualizar a data de vencimento:', error);
+      alert('Não foi possível atualizar a data de vencimento.');
+    } finally {
+      setSavingDueDateId(null);
+    }
   };
 
   // if (evaluations.length === 0 && !paginationLoading) {
@@ -201,7 +245,53 @@ const EvaluationTable = ({
                 <td>{moment(evaluation.period).format('MMM/YYYY')}</td>
                 <td>{evaluation.company_name}</td>
                 <td>{evaluation.form_name}</td>
-                <td>{moment(evaluation.valid_until).format('DD/MM/YYYY')}</td>
+                <td>
+                  {canEditDueDate && editingDueDateId === evaluation.id ? (
+                    <div className="is-flex is-align-items-center" style={{ gap: '0.5rem' }}>
+                      <input
+                        type="date"
+                        className="input is-small"
+                        value={dueDateValue}
+                        onChange={(e) => setDueDateValue(e.target.value)}
+                        disabled={savingDueDateId === evaluation.id || paginationLoading}
+                      />
+                      <button
+                        className="button is-success is-small"
+                        onClick={() => saveDueDate(evaluation.id)}
+                        disabled={savingDueDateId === evaluation.id || paginationLoading}
+                        title="Salvar data"
+                      >
+                        {savingDueDateId === evaluation.id ? (
+                          <FontAwesomeIcon icon={faSpinner} spin size="sm" />
+                        ) : (
+                          <FontAwesomeIcon icon={faCheck} size="sm" />
+                        )}
+                      </button>
+                      <button
+                        className="button is-light is-small"
+                        onClick={cancelEditingDueDate}
+                        disabled={savingDueDateId === evaluation.id}
+                        title="Cancelar"
+                      >
+                        <FontAwesomeIcon icon={faTimes} size="sm" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="is-flex is-align-items-center" style={{ gap: '0.5rem' }}>
+                      <span>{moment(evaluation.valid_until).format('DD/MM/YYYY')}</span>
+                      {canEditDueDate && (
+                        <button
+                          className="button is-text is-small"
+                          onClick={() => startEditingDueDate(evaluation)}
+                          disabled={paginationLoading}
+                          title="Editar data de vencimento"
+                        >
+                          <FontAwesomeIcon icon={faPen} size="sm" />
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </td>
                 <td>
                   <span className={`tag ${getScoreLabel(evaluation.score)}`}>
                     {evaluation.score.toFixed(2)}
