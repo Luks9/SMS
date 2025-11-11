@@ -1,6 +1,6 @@
 // src/pages/EvaluationDetails.jsx
 import React, { useEffect, useState, useContext } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import Layout from '../components/Layout';
 import AnswerList from '../components/AnswerList';
@@ -14,6 +14,10 @@ moment.locale('pt-br');
 const EvaluationDetails = () => {
     const { getToken } = useContext(AuthContext);
     const { id } = useParams();
+    const navigate = useNavigate();
+    const location = useLocation();
+    const fromCompanyManagement = location.state?.from === 'company-management';
+    const previousFilters = location.state?.filters;
     const [evaluation, setEvaluation] = useState(null);
     const [loading, setLoading] = useState(true);
 
@@ -49,6 +53,18 @@ const EvaluationDetails = () => {
   
   return (
     <Layout>
+        {fromCompanyManagement && (
+          <button
+            className="button is-light mb-4"
+            onClick={() =>
+              navigate('/gerenciar-empresa', {
+                state: { filters: previousFilters },
+              })
+            }
+          >
+            ← Voltar para Gerenciar Empresa
+          </button>
+        )}
         <h1 className="title">Detalhes da Avaliação</h1>
         
         <h2 className="subtitle is-5">Empresa: {evaluation.company_name}</h2>
