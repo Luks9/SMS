@@ -7,7 +7,8 @@ import {
   faNotesMedical,
   faPaperPlane,
   faFileContract,
-  faUsers
+  faUsers,
+  faBuilding
 } from '@fortawesome/free-solid-svg-icons';
 import '../styles/Sidebar.css';
 import { AuthContext } from '../context/AuthContext';
@@ -25,6 +26,12 @@ const Sidebar = () => {
       label: 'Dashboard',
       icon: faTachometerAlt,
       allowed: ['admin', 'empresa'],
+    },
+    {
+      to: '/gerenciar-empresa',
+      label: 'Gerenciar Empresa',
+      icon: faBuilding,
+      allowed: ['admin'],
     },
     {
       to: '/enviar-avaliacao',

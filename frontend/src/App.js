@@ -14,6 +14,7 @@ import EvaluationDetails from './pages/EvaluationDetails';
 import EvaluationCompany from './pages/EvaluationCompany';
 import ActionPlanCompany from './pages/ActionPlanCompany';
 import Usuarios from './pages/Usuarios';
+import CompanyManagement from './pages/CompanyManagement';
 // Componentes de Planos de Ação
 import ActionPlanAnswerForm from './components/action_plan/ActionPlanAnswerForm';
 import ActionPlanView from './components/action_plan/ActionPlanView';
@@ -111,6 +112,16 @@ const App = () => {
             <ProtectedRoute>
               <AdminRoute>
                 <Usuarios />
+              </AdminRoute>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/gerenciar-empresa"
+          element={
+            <ProtectedRoute>
+              <AdminRoute>
+                <CompanyManagement />
               </AdminRoute>
             </ProtectedRoute>
           }
