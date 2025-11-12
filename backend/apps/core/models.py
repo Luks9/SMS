@@ -127,7 +127,9 @@ class Evaluation(models.Model):
     STATUS_CHOICES = [
         ('PENDING', 'Pendente'),
         ('IN_PROGRESS', 'Em Progresso'),
+        ('EXPIRED', 'Expirada'),
         ('COMPLETED', 'Concluída'),
+        ('CANCELLED', 'Cancelada'),
     ]
     
     company = models.ForeignKey(Company, on_delete=models.PROTECT, related_name='evaluations')
@@ -143,6 +145,80 @@ class Evaluation(models.Model):
 
     def __str__(self):
         return f"Evaluation {self.id} - {self.company.name}"
+
+    def _cache_value(self, attr_name, value):
+        setattr(self, attr_name, value)
+        return value
+
+    @property
+    def total_questions_count(self):
+        if hasattr(self, '_total_questions_cache'):
+            return self._total_questions_cache
+        total = Question.objects.filter(
+            category__in=self.form.categories.all()
+        ).count()
+        return self._cache_value('_total_questions_cache', total)
+
+    @property
+    def respondent_answers_count(self):
+        if hasattr(self, '_respondent_answers_cache'):
+            return self._respondent_answers_cache
+        count = self.answers.exclude(answer_respondent__in=[None, '']).count()
+        return self._cache_value('_respondent_answers_cache', count)
+
+    @property
+    def evaluator_answers_count(self):
+        if hasattr(self, '_evaluator_answers_cache'):
+            return self._evaluator_answers_cache
+        count = self.answers.exclude(answer_evaluator__in=[None, '']).count()
+        return self._cache_value('_evaluator_answers_cache', count)
+
+    def answered_percentage(self):
+        total = self.total_questions_count
+        if total == 0:
+            return 0
+        return round((self.respondent_answers_count / total) * 100)
+
+    def is_expired(self):
+        return bool(self.valid_until and self.valid_until < timezone.now().date())
+
+    def has_started(self):
+        return self.respondent_answers_count > 0 or self.evaluator_answers_count > 0
+
+    def refresh_status(self, commit=True):
+        """
+        Atualiza o status com base nas respostas, avaliação e prazo.
+        """
+        if self.status == 'CANCELLED':
+            return False
+
+        previous_status = self.status
+        total = self.total_questions_count
+        fully_answered = total > 0 and self.respondent_answers_count >= total
+        fully_evaluated = total > 0 and self.evaluator_answers_count >= total
+
+        if fully_evaluated or (fully_answered and not self.is_expired()):
+            self.status = 'COMPLETED'
+            if not self.completed_at:
+                self.completed_at = timezone.now()
+        elif self.is_expired():
+            self.status = 'EXPIRED'
+            if self.completed_at:
+                self.completed_at = None
+        elif self.has_started():
+            self.status = 'IN_PROGRESS'
+            if self.completed_at:
+                self.completed_at = None
+        else:
+            self.status = 'PENDING'
+            if self.completed_at:
+                self.completed_at = None
+
+        if self.status != previous_status:
+            if commit:
+                self.save(update_fields=['status', 'completed_at'])
+            return True
+        return False
 
 
 class Answer(models.Model):
@@ -166,20 +242,8 @@ class Answer(models.Model):
         ]
 
     def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)  # Salva a resposta normalmente
-
-        # Verifica se a avaliação possui pelo menos uma resposta
-        if self.evaluation.answers.exists():
-            # Atualiza o status da avaliação para 'IN_PROGRESS' se houver pelo menos uma resposta
-            if self.evaluation.status != 'IN_PROGRESS':  # Evita salvar se já estiver 'IN_PROGRESS'
-                self.evaluation.status = 'IN_PROGRESS'
-                self.evaluation.save()
-            
-            # Verifica se a data de validade "valid_until" já passou
-        if self.evaluation.valid_until and self.evaluation.valid_until < timezone.now().date():
-            self.evaluation.status = 'COMPLETED'
-
-        self.evaluation.save()
+        super().save(*args, **kwargs)
+        self.evaluation.refresh_status()
 
     def __str__(self):
         return f"Answer {self.id} - {self.get_answer_respondent_display()}"

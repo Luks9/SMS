@@ -5,12 +5,17 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse, OpenApiTypes
 import os
+import textwrap
+from io import BytesIO
 from apps.users.utils.permissions import user_has_access_to_company
-from django.http import FileResponse, Http404
+from django.http import FileResponse, Http404, HttpResponse
 from django.shortcuts import get_object_or_404
 from django.db.models import Exists, OuterRef, Q
 from django.db.models.deletion import ProtectedError
-from .models import Company, CategoryQuestion, Question, Form, Answer, Subcategory, Evaluation, ActionPlan, Polo
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+from openpyxl import Workbook
+from .models import Company, CategoryQuestion, Question, Form, Answer, Subcategory, Evaluation, ActionPlan, Polo, ANSWER_CHOICES
 from .serializers import (
     CompanySerializer, 
     CategoryQuestionSerializer, 
@@ -217,6 +222,7 @@ class EvaluationViewSet(viewsets.ModelViewSet):
     queryset = Evaluation.objects.all()
     serializer_class = EvaluationSerializer
     pagination_class = StandardResultsSetPagination
+    ANSWER_LABELS = dict(ANSWER_CHOICES)
 
     @extend_schema(
         responses=ScoreResponseSerializer
@@ -254,6 +260,7 @@ class EvaluationViewSet(viewsets.ModelViewSet):
 
         evaluation.score = final_score
         evaluation.save()
+        evaluation.refresh_status()
         
         # Retorna a pontuação calculada
         return Response({
@@ -437,6 +444,161 @@ class EvaluationViewSet(viewsets.ModelViewSet):
         """
         serializer = EvaluationDetailSerializer(evaluation)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def _build_export_payload(self, evaluation):
+        serializer = EvaluationDetailSerializer(
+            evaluation, context={'request': self.request}
+        )
+        data = serializer.data
+        data['period_display'] = evaluation.period.strftime('%m/%Y') if evaluation.period else '-'
+        data['valid_until_display'] = evaluation.valid_until.strftime('%d/%m/%Y') if evaluation.valid_until else '-'
+        data['score_display'] = f"{evaluation.score:.2f}" if evaluation.score is not None else '-'
+        action_plan = evaluation.action_plans.first()
+        data['action_plan'] = ActionPlanSerializer(action_plan).data if action_plan else None
+        return data
+
+    def _attachment_label(self, value):
+        return "Sim" if value else "Não"
+
+    def _choice_label(self, value):
+        if not value:
+            return 'Sem resposta'
+        return self.ANSWER_LABELS.get(value, value)
+
+    @extend_schema(
+        tags=['Avaliações'],
+        description="Exporta os detalhes da avaliação em PDF.",
+        responses={200: OpenApiResponse(response=OpenApiTypes.BINARY, description="Documento PDF")}
+    )
+    @action(detail=True, methods=['get'], url_path='export/pdf')
+    def export_pdf(self, request, pk=None):
+        evaluation = self.get_object()
+        payload = self._build_export_payload(evaluation)
+
+        buffer = BytesIO()
+        pdf = canvas.Canvas(buffer, pagesize=A4)
+        width, height = A4
+        y_position = height - 40
+
+        def write_line(text, font="Helvetica", size=10, leading=14):
+            nonlocal y_position
+            wrapped_lines = textwrap.wrap(text, width=100) or ['']
+            for line in wrapped_lines:
+                if y_position <= 60:
+                    pdf.showPage()
+                    y_position = height - 40
+                    pdf.setFont(font, size)
+                pdf.setFont(font, size)
+                pdf.drawString(40, y_position, line)
+                y_position -= leading
+
+        write_line("Resumo da Avaliação", font="Helvetica-Bold", size=12, leading=18)
+        summary_lines = [
+            f"Empresa: {payload.get('company_name')}",
+            f"Formulário: {payload.get('form_name')}",
+            f"Período: {payload.get('period_display')}",
+            f"Status: {payload.get('status')}",
+            f"Nota: {payload.get('score_display')}",
+            f"Validade: {payload.get('valid_until_display')}",
+        ]
+        for line in summary_lines:
+            write_line(line)
+
+        write_line("-" * 80)
+        write_line("Perguntas e respostas", font="Helvetica-Bold", size=12, leading=18)
+
+        questions = payload.get('questions', [])
+        for index, question in enumerate(questions, start=1):
+            answer = question.get('answer') or {}
+            write_line(f"Pergunta {index}: {question.get('question')}", font="Helvetica-Bold", size=10, leading=16)
+            if question.get('recommendation'):
+                write_line(f"Recomendação: {question.get('recommendation')}")
+            write_line(f"Empresa: {self._choice_label(answer.get('answer_respondent'))}")
+            write_line(f"Anexo da Empresa: {self._attachment_label(answer.get('attachment_respondent'))}")
+            write_line(f"Avaliador: {self._choice_label(answer.get('answer_evaluator'))}")
+            write_line(f"Anexo do avaliador: {self._attachment_label(answer.get('attachment_evaluator'))}")
+            if answer.get('note'):
+                write_line(f"Observação: {answer.get('note')}")
+            write_line("-" * 60)
+
+        if payload.get('action_plan'):
+            plan = payload['action_plan']
+            write_line("Plano de Ação", font="Helvetica-Bold", size=12, leading=18)
+            write_line(f"Descrição: {plan.get('description')}")
+            write_line(f"Status: {plan.get('status')}")
+            write_line(f"Data de término: {plan.get('end_date') or '-'}")
+            if plan.get('response_company'):
+                write_line(f"Resposta: {plan.get('response_company')}")
+
+        pdf.save()
+        buffer.seek(0)
+        filename = f"avaliacao_{evaluation.id}.pdf"
+        response = HttpResponse(buffer, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+
+    @extend_schema(
+        tags=['Avaliações'],
+        description="Exporta os detalhes da avaliação em XLSX.",
+        responses={200: OpenApiResponse(response=OpenApiTypes.BINARY, description="Planilha XLSX")}
+    )
+    @action(detail=True, methods=['get'], url_path='export/xlsx')
+    def export_xlsx(self, request, pk=None):
+        evaluation = self.get_object()
+        payload = self._build_export_payload(evaluation)
+
+        workbook = Workbook()
+        summary_sheet = workbook.active
+        summary_sheet.title = "Resumo"
+        summary_rows = [
+            ("Empresa", payload.get('company_name')),
+            ("Formulário", payload.get('form_name')),
+            ("Período", payload.get('period_display')),
+            ("Status", payload.get('status')),
+            ("Nota", payload.get('score_display')),
+            ("Validade", payload.get('valid_until_display')),
+        ]
+        for row in summary_rows:
+            summary_sheet.append(row)
+
+        questions_sheet = workbook.create_sheet("Perguntas")
+        questions_sheet.append(["Categoria", "Pergunta", "Empresa", "Avaliador", "Observação", "Anexo da Empresa", "Anexo do Avaliador"])
+        for question in payload.get('questions', []):
+            answer = question.get('answer') or {}
+            questions_sheet.append([
+                question.get('category_name'),
+                question.get('question'),
+                self._choice_label(answer.get('answer_respondent')),
+                self._choice_label(answer.get('answer_evaluator')),
+                answer.get('note') or '',
+                self._attachment_label(answer.get('attachment_respondent')),
+                self._attachment_label(answer.get('attachment_evaluator')),
+            ])
+
+        if payload.get('action_plan'):
+            plan = payload['action_plan']
+            plan_sheet = workbook.create_sheet("Plano de Ação")
+            plan_rows = [
+                ("Descrição", plan.get('description')),
+                ("Status", plan.get('status')),
+                ("Data de término", plan.get('end_date') or '-'),
+                ("Resposta da empresa", plan.get('response_company') or '-'),
+                ("Classificação respondente", plan.get('response_choice_display') or '-'),
+            ]
+            for row in plan_rows:
+                plan_sheet.append(row)
+
+        output = BytesIO()
+        workbook.save(output)
+        output.seek(0)
+
+        filename = f"avaliacao_{evaluation.id}.xlsx"
+        response = HttpResponse(
+            output,
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
 
 
 @extend_schema(tags=['Respostas'])
