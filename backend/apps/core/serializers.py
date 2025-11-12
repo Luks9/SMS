@@ -89,6 +89,10 @@ class EvaluationSerializer(serializers.ModelSerializer):
     total_questions = serializers.SerializerMethodField()
     answered_questions = serializers.SerializerMethodField()
     unanswered_questions = serializers.SerializerMethodField()
+    answered_percentage = serializers.SerializerMethodField()
+    is_expired = serializers.SerializerMethodField()
+    fully_answered = serializers.SerializerMethodField()
+    fully_evaluated = serializers.SerializerMethodField()
 
     class Meta:
         model = Evaluation
@@ -109,6 +113,10 @@ class EvaluationSerializer(serializers.ModelSerializer):
             'total_questions',  # Incluindo o total de perguntas
             'answered_questions',  # Incluindo o total de perguntas respondidas
             'unanswered_questions',
+            'answered_percentage',
+            'is_expired',
+            'fully_answered',
+            'fully_evaluated',
             'action_plan'
         ]
     
@@ -116,26 +124,48 @@ class EvaluationSerializer(serializers.ModelSerializer):
     @extend_schema_field(serializers.IntegerField())
     def get_total_questions(self, obj) -> int:
         # Pega todas as perguntas relacionadas ao formulário da avaliação
-        return Question.objects.filter(category__in=obj.form.categories.all()).count()
+        return obj.total_questions_count
 
 
     @extend_schema_field(serializers.IntegerField())
     def get_answered_questions(self, obj)-> int:
         # Conta as respostas que foram respondidas pelo respondente
-        return Answer.objects.filter(evaluation=obj).exclude(answer_respondent__in=[None, '']).count()
+        return obj.respondent_answers_count
     
     @extend_schema_field(serializers.IntegerField())
     def get_unanswered_questions(self, obj) -> int:
         # Calcula as perguntas não respondidas
-        total_questions = self.get_total_questions(obj)
-        answered_questions = self.get_answered_questions(obj)
+        total_questions = obj.total_questions_count
+        answered_questions = obj.respondent_answers_count
         return total_questions - answered_questions
+
+    @extend_schema_field(serializers.IntegerField())
+    def get_answered_percentage(self, obj) -> int:
+        return obj.answered_percentage()
+
+    @extend_schema_field(serializers.BooleanField())
+    def get_is_expired(self, obj) -> bool:
+        return obj.is_expired()
+
+    @extend_schema_field(serializers.BooleanField())
+    def get_fully_answered(self, obj) -> bool:
+        total = obj.total_questions_count
+        return total > 0 and obj.respondent_answers_count >= total
+
+    @extend_schema_field(serializers.BooleanField())
+    def get_fully_evaluated(self, obj) -> bool:
+        total = obj.total_questions_count
+        return total > 0 and obj.evaluator_answers_count >= total
     
     @extend_schema_field(serializers.IntegerField(allow_null=True))
     def get_action_plan(self, obj):
         # Retorna o ID do plano de ação associado à avaliação ou None se não existir
         action_plan = obj.action_plans.first()  # Como só existe um plano de ação, pegamos o primeiro
         return action_plan.id if action_plan else None
+
+    def to_representation(self, instance):
+        instance.refresh_status()
+        return super().to_representation(instance)
 
 
     def validate(self, data):
