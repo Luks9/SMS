@@ -1,20 +1,29 @@
-import React, { useMemo, useState } from 'react';
+import React, { useContext, useMemo, useState } from 'react';
+import axios from 'axios';
 import moment from 'moment';
 import 'moment/locale/pt-br';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faSpinner, faInfoCircle } from '@fortawesome/free-solid-svg-icons';
+import {
+  faSpinner,
+  faInfoCircle,
+  faClipboardList,
+  faFilePdf,
+  faFileExcel,
+} from '@fortawesome/free-solid-svg-icons';
+import { useLocation, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import useFetchCompany from '../hooks/useFetchCompany';
 import useFetchCompanyEvaluations from '../hooks/useFetchCompanyEvaluations';
 import { STATUS_CHOICES } from '../utils/StatusChoices';
 import Message from '../components/Message';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { AuthContext } from '../context/AuthContext';
 
 moment.locale('pt-br');
 
 const CompanyManagement = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { getToken } = useContext(AuthContext);
   const initialFilters = location.state?.filters || {};
   const { companies, loading: loadingCompanies } = useFetchCompany(true);
   const [selectedCompanyId, setSelectedCompanyId] = useState(initialFilters.companyId || '');
@@ -22,6 +31,9 @@ const CompanyManagement = () => {
   const [periodFilter, setPeriodFilter] = useState(
     initialFilters.periodFilter ?? initialFilters.searchValue ?? ''
   );
+  const [exportingId, setExportingId] = useState(null);
+  const [exportingFormat, setExportingFormat] = useState(null);
+  const [exportError, setExportError] = useState('');
 
   const {
     evaluations,
@@ -31,6 +43,7 @@ const CompanyManagement = () => {
 
   const handleCompanyChange = (event) => {
     setSelectedCompanyId(event.target.value);
+    setExportError('');
   };
 
   const filteredEvaluations = useMemo(() => {
@@ -40,13 +53,18 @@ const CompanyManagement = () => {
 
     return evaluations
       .filter((evaluation) => {
-        if (statusFilter === 'completed') {
-          return evaluation.status === 'COMPLETED' || evaluation.answered_questions === evaluation.total_questions;
+        switch (statusFilter) {
+          case 'completed':
+            return evaluation.status === 'COMPLETED';
+          case 'in_progress':
+            return evaluation.status === 'IN_PROGRESS';
+          case 'expired':
+            return evaluation.status === 'EXPIRED';
+          case 'cancelled':
+            return evaluation.status === 'CANCELLED';
+          default:
+            return true;
         }
-        if (statusFilter === 'in_progress') {
-          return evaluation.status !== 'COMPLETED';
-        }
-        return true;
       })
       .filter((evaluation) => {
         if (!periodFilter) return true;
@@ -58,15 +76,51 @@ const CompanyManagement = () => {
 
   const renderStatusTag = (evaluation) => {
     const statusInfo = STATUS_CHOICES[evaluation.status] || {};
-    const percentage = evaluation.total_questions
-      ? Math.round((evaluation.answered_questions / evaluation.total_questions) * 100)
-      : 0;
+    const percentage =
+      typeof evaluation.answered_percentage === 'number'
+        ? evaluation.answered_percentage
+        : evaluation.total_questions
+        ? Math.round((evaluation.answered_questions / evaluation.total_questions) * 100)
+        : 0;
 
     return (
       <span className={`tag ${statusInfo.className || 'is-light'}`}>
-        {statusInfo.label || evaluation.status} • {percentage}%
+        {statusInfo.label || evaluation.status} - {percentage}%
       </span>
     );
+  };
+
+  const handleExport = async (evaluationId, format) => {
+    try {
+      setExportError('');
+      setExportingId(evaluationId);
+      setExportingFormat(format);
+      const token = getToken();
+      const response = await axios.get(`/api/evaluation/${evaluationId}/export/${format}/`, {
+        responseType: 'blob',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const contentType =
+        format === 'pdf'
+          ? 'application/pdf'
+          : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      const blob = new Blob([response.data], { type: contentType });
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(blob);
+      link.download = `avaliacao_${evaluationId}.${format === 'pdf' ? 'pdf' : 'xlsx'}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(link.href);
+    } catch (error) {
+      console.error('Erro ao exportar a avaliação:', error);
+      setExportError('Não foi possível exportar a avaliação. Tente novamente.');
+    } finally {
+      setExportingId(null);
+      setExportingFormat(null);
+    }
   };
 
   return (
@@ -98,6 +152,8 @@ const CompanyManagement = () => {
                 <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
                   <option value="completed">Respondidas</option>
                   <option value="in_progress">Em andamento</option>
+                  <option value="expired">Expiradas</option>
+                  <option value="cancelled">Canceladas</option>
                   <option value="all">Todas</option>
                 </select>
               </div>
@@ -122,6 +178,9 @@ const CompanyManagement = () => {
 
       {evaluationsError && (
         <Message type="danger" message="Não foi possível carregar as avaliações da empresa selecionada." />
+      )}
+      {exportError && (
+        <Message type="danger" message={exportError} onClose={() => setExportError('')} />
       )}
 
       {!selectedCompanyId ? (
@@ -150,42 +209,89 @@ const CompanyManagement = () => {
                       <th>Status</th>
                       <th>Nota</th>
                       <th></th>
+                      <th></th>
+                      <th>Exportar</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredEvaluations.map((evaluation) => (
-                      <tr key={evaluation.id}>
-                        <td>{moment(evaluation.period).format('MMM/YYYY')}</td>
-                        <td>{evaluation.form_name}</td>
-                        <td>{renderStatusTag(evaluation)}</td>
-                        <td>
-                          {evaluation.score !== null ? (
-                            <span className="tag is-dark">{Number(evaluation.score).toFixed(1)}</span>
-                          ) : (
-                            '-'
-                          )}
-                        </td>
-                        <td className="has-text-right">
-                          <button
-                            className="button is-small is-link is-light"
-                            onClick={() =>
-                              navigate(`/evaluation/${evaluation.id}/details`, {
-                                state: {
-                                  from: 'company-management',
-                                  filters: {
-                                    companyId: selectedCompanyId,
-                                    statusFilter,
-                                    periodFilter,
+                    {filteredEvaluations.map((evaluation) => {
+                      const isExportingThis = exportingId === evaluation.id;
+                      return (
+                        <tr key={evaluation.id}>
+                          <td>{moment(evaluation.period).format('MMM/YYYY')}</td>
+                          <td>{evaluation.form_name}</td>
+                          <td>{renderStatusTag(evaluation)}</td>
+                          <td>
+                            {typeof evaluation.score === 'number' ? (
+                              <span className="tag is-dark">{Number(evaluation.score).toFixed(1)}</span>
+                            ) : (
+                              <span className="tag is-light">Sem nota</span>
+                            )}
+                          </td>
+                          <td className="has-text-right">
+                            <button
+                              className="button is-small is-link is-light"
+                              onClick={() =>
+                                navigate(`/evaluation/${evaluation.id}/details`, {
+                                  state: {
+                                    from: 'company-management',
+                                    filters: {
+                                      companyId: selectedCompanyId,
+                                      statusFilter,
+                                      periodFilter,
+                                    },
                                   },
-                                },
-                              })
-                            }
-                          >
-                            Ver detalhes
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                                })
+                              }
+                            >
+                              Ver detalhes
+                            </button>
+                          </td>
+                          <td className="has-text-right">
+                            {evaluation.action_plan ? (
+                              <button
+                                className="button is-small is-info is-light"
+                                onClick={() => navigate(`/action-plan/${evaluation.action_plan}/view`)}
+                              >
+                                <FontAwesomeIcon icon={faClipboardList} /> &nbsp; Plano de ação
+                              </button>
+                            ) : (
+                              <span className="tag is-light">Sem plano</span>
+                            )}
+                          </td>
+                          <td className="has-text-right">
+                            <div className="buttons are-small is-justify-content-flex-end">
+                              <button
+                                className="button is-light"
+                                onClick={() => handleExport(evaluation.id, 'pdf')}
+                                disabled={isExportingThis}
+                              >
+                                {isExportingThis && exportingFormat === 'pdf' ? (
+                                  <FontAwesomeIcon icon={faSpinner} spin />
+                                ) : (
+                                  <>
+                                    <FontAwesomeIcon icon={faFilePdf} /> &nbsp; PDF
+                                  </>
+                                )}
+                              </button>
+                              <button
+                                className="button is-light"
+                                onClick={() => handleExport(evaluation.id, 'xlsx')}
+                                disabled={isExportingThis}
+                              >
+                                {isExportingThis && exportingFormat === 'xlsx' ? (
+                                  <FontAwesomeIcon icon={faSpinner} spin />
+                                ) : (
+                                  <>
+                                    <FontAwesomeIcon icon={faFileExcel} /> &nbsp; XLSX
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

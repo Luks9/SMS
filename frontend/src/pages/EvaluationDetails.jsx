@@ -62,7 +62,7 @@ const EvaluationDetails = () => {
               })
             }
           >
-            ← Voltar para Gerenciar Empresa
+            ← Voltar
           </button>
         )}
         <h1 className="title">Detalhes da Avaliação</h1>

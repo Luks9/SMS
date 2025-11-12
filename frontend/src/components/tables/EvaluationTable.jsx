@@ -88,7 +88,10 @@ const EvaluationTable = ({
   };
 
   const calculateProgressPercentage = (evaluation) => {
-    if (evaluation.total_questions === 0) return 0;
+    if (typeof evaluation.answered_percentage === 'number') {
+      return evaluation.answered_percentage;
+    }
+    if (!evaluation.total_questions) return 0;
     return Math.round((evaluation.answered_questions / evaluation.total_questions) * 100);
   };
 
@@ -100,6 +103,9 @@ const EvaluationTable = ({
   };
 
   const getScoreLabel = (score) => {
+    if (score === null || score === undefined) {
+      return 'is-light';
+    }
     if (score >= 85) {
       return 'is-success';
     } else if (score >= 80) {
@@ -110,8 +116,9 @@ const EvaluationTable = ({
   };
 
   const shouldShowActionPlan = (evaluation) => {
-    const validUntilMoment = moment(evaluation.valid_until);
-    if ((validUntilMoment.isBefore(moment())) && evaluation.score < 85) {
+    if (evaluation.status === 'CANCELLED') return false;
+    if (evaluation.status === 'EXPIRED') return true;
+    if (evaluation.status === 'COMPLETED' && typeof evaluation.score === 'number' && evaluation.score < 85) {
       return true;
     }
     return false;
@@ -293,9 +300,13 @@ const EvaluationTable = ({
                   )}
                 </td>
                 <td>
-                  <span className={`tag ${getScoreLabel(evaluation.score)}`}>
-                    {evaluation.score.toFixed(2)}
-                  </span>
+                  {typeof evaluation.score === 'number' ? (
+                    <span className={`tag ${getScoreLabel(evaluation.score)}`}>
+                      {evaluation.score.toFixed(2)}
+                    </span>
+                  ) : (
+                    <span className="tag is-light">Sem nota</span>
+                  )}
                 </td>
                 <td>
                   <span className={`tag ${STATUS_CHOICES[evaluation.status]?.className}`}>
@@ -312,7 +323,7 @@ const EvaluationTable = ({
                   </progress>
                 </td>
                 <td className="px-0" style={{ textAlign: 'center' }}>
-                  {evaluation.status !== 'COMPLETED' && (
+                  {evaluation.status !== 'COMPLETED' && evaluation.status !== 'CANCELLED' && (
                     <button
                       className="button is-light is-small"
                       onClick={() => handleDelete(evaluation.id)}
@@ -371,15 +382,31 @@ const EvaluationTable = ({
                   ) : evaluation.status === 'COMPLETED' ? (
                     <button
                       className="button is-success is-small"
-                      title="Aprovado"
+                      title="Concluída"
                       disabled={paginationLoading}
                     >
                       <FontAwesomeIcon icon={faCheckSquare} size="lg" />
                     </button>
+                  ) : evaluation.status === 'EXPIRED' ? (
+                    <button
+                      className="button is-dark is-small is-light"
+                      title="Avaliação expirada"
+                      disabled
+                    >
+                      <FontAwesomeIcon icon={faClock} size="lg" />
+                    </button>
+                  ) : evaluation.status === 'CANCELLED' ? (
+                    <button
+                      className="button is-light is-small"
+                      title="Avaliação cancelada"
+                      disabled
+                    >
+                      <FontAwesomeIcon icon={faTimes} size="lg" />
+                    </button>
                   ) : (
                     <button
                       className="button is-warning is-small is-light"
-                      title="Em Andamento"
+                      title="Em andamento"
                       disabled={paginationLoading}
                     >
                       <FontAwesomeIcon icon={faClock} size="lg" />
