@@ -162,14 +162,20 @@ class UserListView(APIView):
     def get(self, request):
         pagination_class = StandardResultsSetPagination()
         users = User.objects.all()
-        pole_id = request.headers.get('X-Polo-Id')
-        if pole_id:
-            users = users.filter(
-                Q(companies__poles__id=pole_id) |  # usuários de empresas do polo
-                Q(poles__id=pole_id)
-            )
-
+        
+        # Verificar o tipo de filtro primeiro
         user_type = request.query_params.get('user_type', '').strip().lower()
+        
+        # Se for "sem_polo", NÃO aplicar o filtro de polo_id
+        if user_type != 'sem_polo':
+            pole_id = request.headers.get('X-Polo-Id')
+            if pole_id:
+                users = users.filter(
+                    Q(companies__poles__id=pole_id) |  # usuários de empresas do polo
+                    Q(poles__id=pole_id)
+                )
+
+        # Aplicar filtros de tipo de usuário
         if user_type == 'avaliador':
             users = users.filter(is_superuser=True)
         elif user_type == 'empresa':
