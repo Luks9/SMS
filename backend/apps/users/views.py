@@ -174,6 +174,8 @@ class UserListView(APIView):
             users = users.filter(is_superuser=True)
         elif user_type == 'empresa':
             users = users.filter(is_superuser=False)
+        elif user_type == 'sem_polo':
+            users = users.filter(poles__isnull=True, is_active=True)
 
         search = request.query_params.get('search', '').strip()
         if search:

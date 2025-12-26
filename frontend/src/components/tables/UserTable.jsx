@@ -40,6 +40,7 @@ const UserTable = ({
               <option value="all">Todos</option>
               <option value="avaliador">Avaliador</option>
               <option value="empresa">Empresa</option>
+              <option value="sem_polo">Sem Polo</option>
             </select>
           </div>
         </div>
