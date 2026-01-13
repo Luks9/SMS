@@ -1,4 +1,5 @@
 #apps/core/serializers.py
+import os
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
@@ -234,13 +235,33 @@ class AnswerSerializer(serializers.ModelSerializer):
 
 
     def validate_attachment_respondent(self, value):
-        if value and value.size > 1024 * 1024 * 5:  # Limite de 5 MB
-            raise serializers.ValidationError("O arquivo não pode exceder 5MB.")
+        if value:
+            # Validar tamanho (10MB)
+            if value.size > 1024 * 1024 * 10:
+                raise serializers.ValidationError("O arquivo não pode exceder 10MB.")
+            
+            # Validar tipo de arquivo
+            allowed_extensions = ['.pdf', '.zip', '.jpg', '.jpeg', '.png', '.doc', '.docx', '.xlsx', '.xls']
+            ext = os.path.splitext(value.name)[1].lower()
+            if ext not in allowed_extensions:
+                raise serializers.ValidationError(
+                    f"Tipo de arquivo não permitido. Extensões aceitas: {', '.join(allowed_extensions)}"
+                )
         return value
 
     def validate_attachment_evaluator(self, value):
-        if value and value.size > 1024 * 1024 * 5:  # Limite de 5 MB
-            raise serializers.ValidationError("O arquivo não pode exceder 5MB.")
+        if value:
+            # Validar tamanho (10MB)
+            if value.size > 1024 * 1024 * 10:
+                raise serializers.ValidationError("O arquivo não pode exceder 10MB.")
+            
+            # Validar tipo de arquivo
+            allowed_extensions = ['.pdf', '.zip', '.jpg', '.jpeg', '.png', '.doc', '.docx', '.xlsx', '.xls']
+            ext = os.path.splitext(value.name)[1].lower()
+            if ext not in allowed_extensions:
+                raise serializers.ValidationError(
+                    f"Tipo de arquivo não permitido. Extensões aceitas: {', '.join(allowed_extensions)}"
+                )
         return value
 
 
