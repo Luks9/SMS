@@ -7,11 +7,13 @@ import React, {
 } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { useMsal } from '@azure/msal-react';
 import usePoleContext from './usePoles';
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
+  const { instance, accounts } = useMsal();
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('token') || null);
   const [isLoading, setIsLoading] = useState(true);
@@ -82,7 +84,7 @@ export const AuthProvider = ({ children }) => {
     }
   }, [user?.is_superuser, loadUserPoles, setActivePole, setPoles, user]);
 
-  const logout = useCallback(() => {
+  const clearSession = useCallback(() => {
     setUser(null);
     setToken(null);
     setPoles([]);
@@ -98,8 +100,27 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('is_staff');
 
     delete axios.defaults.headers.common.Authorization;
+  }, [setActivePole, setPoles]);
+
+  const logout = useCallback(() => {
+    clearSession();
     navigate('/login');
-  }, [navigate, setActivePole, setPoles]);
+  }, [clearSession, navigate]);
+
+  const logoutWithMsal = useCallback(async () => {
+    try {
+      const account = instance.getActiveAccount?.() || accounts?.[0] || null;
+      await instance.logoutPopup({
+        account,
+        postLogoutRedirectUri: window.location.origin,
+        mainWindowRedirectUri: window.location.origin,
+      });
+    } catch (error) {
+      console.warn('Logout MSAL falhou:', error);
+    } finally {
+      logout();
+    }
+  }, [accounts, instance, logout]);
 
   const verifyAndRefreshToken = useCallback(async () => {
     if (refreshPromiseRef.current) {
@@ -281,6 +302,7 @@ export const AuthProvider = ({ children }) => {
         user,
         login,
         logout,
+        logoutWithMsal,
         getToken,
         isLoading,
         message,
