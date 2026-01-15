@@ -236,9 +236,9 @@ class AnswerSerializer(serializers.ModelSerializer):
 
     def validate_attachment_respondent(self, value):
         if value:
-            # Validar tamanho (10MB)
-            if value.size > 1024 * 1024 * 10:
-                raise serializers.ValidationError("O arquivo não pode exceder 10MB.")
+            # Validar tamanho (25MB)
+            if value.size > 1024 * 1024 * 25:
+                raise serializers.ValidationError("O arquivo não pode exceder 25MB.")
             
             # Validar tipo de arquivo
             allowed_extensions = ['.pdf', '.zip', '.jpg', '.jpeg', '.png', '.doc', '.docx', '.xlsx', '.xls']
@@ -251,9 +251,9 @@ class AnswerSerializer(serializers.ModelSerializer):
 
     def validate_attachment_evaluator(self, value):
         if value:
-            # Validar tamanho (10MB)
-            if value.size > 1024 * 1024 * 10:
-                raise serializers.ValidationError("O arquivo não pode exceder 10MB.")
+            # Validar tamanho (25MB)
+            if value.size > 1024 * 1024 * 25:
+                raise serializers.ValidationError("O arquivo não pode exceder 25MB.")
             
             # Validar tipo de arquivo
             allowed_extensions = ['.pdf', '.zip', '.jpg', '.jpeg', '.png', '.doc', '.docx', '.xlsx', '.xls']

@@ -11,5 +11,6 @@ export const msalConfig = {
 };
 
 export const loginRequest = {
-  scopes: ["api://5880ebd1-ae22-4814-8378-b292515758be/read"]
+  scopes: ["api://5880ebd1-ae22-4814-8378-b292515758be/read"],
+  prompt: "login"
 };

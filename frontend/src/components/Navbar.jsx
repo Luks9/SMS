@@ -9,7 +9,7 @@ import '../styles/Navbar.css';
 
 const Navbar = () => {
   const { theme, toggleTheme } = useTheme();
-  const { logout } = useContext(AuthContext);
+  const { logoutWithMsal } = useContext(AuthContext);
 
 
   return (
@@ -28,7 +28,7 @@ const Navbar = () => {
                 size="lg"
               />
             </button>
-            <a className="button is-danger" onClick={logout}>
+            <a className="button is-danger" onClick={logoutWithMsal}>
               Logout
             </a>
           </div>
