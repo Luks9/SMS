@@ -29,7 +29,12 @@ const Login = () => {
 
     instance
       .loginPopup(loginRequest)
-      .then((response) => login(response.accessToken))
+      .then((response) => {
+        if (response?.account) {
+          instance.setActiveAccount(response.account);
+        }
+        return login(response.accessToken);
+      })
       .catch((error) => {
         console.error(error);
         setMessage('Nao foi possivel completar a autenticacao com a Microsoft. Tente novamente.');

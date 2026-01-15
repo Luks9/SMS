@@ -4,7 +4,7 @@ import { faSignOutAlt } from '@fortawesome/free-solid-svg-icons';
 import { AuthContext } from '../context/AuthContext';
 
 const Topbar = () => {
-  const { user, poles, selectedPoleId, setActivePole, selectedPole, logout } = useContext(AuthContext) || {};
+  const { user, poles, selectedPoleId, setActivePole, selectedPole, logoutWithMsal } = useContext(AuthContext) || {};
 
   return (
     <nav 
@@ -57,7 +57,7 @@ const Topbar = () => {
         </div>
       </div>
     )}
-      <button className="button is-danger is-small  is-outlined" title='Sair' onClick={logout}>
+      <button className="button is-danger is-small  is-outlined" title='Sair' onClick={logoutWithMsal}>
         <FontAwesomeIcon icon={faSignOutAlt} />
       </button>
   </div>
