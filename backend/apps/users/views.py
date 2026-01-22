@@ -241,25 +241,28 @@ class UserUpdateView(APIView):
             serializer.save()
 
             # --- Novo bloco para tratar polo_ids ---
-            polo_ids = request.data.get('polo_ids', [])
-            if polo_ids is not None and user.is_staff:
-                from apps.core.models import Polo
-                try:
-                    polos = Polo.objects.filter(id__in=polo_ids)
-                    if polos.count() != len(polo_ids):
+            polo_ids = request.data.get('polo_ids', None)
+            if polo_ids is not None:
+                if user.is_superuser:
+                    from apps.core.models import Polo
+                    try:
+                        polos = Polo.objects.filter(id__in=polo_ids)
+                        if polos.count() != len(polo_ids):
+                            return Response(
+                                {'error': 'Um ou mais polos nao foram encontrados'}, 
+                                status=status.HTTP_400_BAD_REQUEST
+                            )
+                        user.poles.set(polos)
+                    except Exception as e:
                         return Response(
-                            {'error': 'Um ou mais polos não foram encontrados'}, 
+                            {'error': f'Erro ao associar polos: {str(e)}'}, 
                             status=status.HTTP_400_BAD_REQUEST
                         )
-                    user.poles.set(polos)
-                except Exception as e:
-                    return Response(
-                        {'error': f'Erro ao associar polos: {str(e)}'}, 
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
+                else:
+                    user.poles.clear()
             # --- Fim do bloco novo ---
 
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            return Response(UserSerializer(user).data, status=status.HTTP_200_OK)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
