@@ -10,7 +10,7 @@ import { faMicrosoft } from '@fortawesome/free-brands-svg-icons';
 import { faSpinner } from '@fortawesome/free-solid-svg-icons';
 
 const Login = () => {
-  const { instance } = useMsal();
+  const { instance, inProgress } = useMsal();
 
   const {
     login,
@@ -25,6 +25,12 @@ const Login = () => {
 
   const handleLogin = () => {
     setMessage(null);
+
+    if (inProgress && inProgress !== 'none') {
+      setMessage('A autenticacao com a Microsoft ja esta em andamento. Aguarde alguns segundos e tente novamente.');
+      return;
+    }
+
     setIsAuthenticating(true);
 
     instance
@@ -37,7 +43,7 @@ const Login = () => {
       })
       .catch((error) => {
         console.error(error);
-        setMessage('Nao foi possivel completar a autenticacao com a Microsoft. Tente novamente.');
+        setMessage('Nao foi possivel completar a autenticacao com a Microsoft. Feche janelas de login abertas e tente novamente.');
       })
       .finally(() => {
         setIsAuthenticating(false);
@@ -72,7 +78,7 @@ const Login = () => {
                   onClick={handleLogin}
                   className="login-button"
                   style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem' }}
-                  disabled={isAuthenticating}
+                  disabled={isAuthenticating || (inProgress && inProgress !== 'none')}
                   aria-busy={isAuthenticating}
                 >
                   {isAuthenticating ? (
