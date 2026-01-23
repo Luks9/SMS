@@ -104,6 +104,8 @@ const UserEditModal = ({ user, groups, isOpen, onClose, onSave, onManageGroups, 
       }
       if (formData.is_staff && selectedPolos.length > 0) {
         updateData.polo_ids = selectedPolos;
+      } else {
+        updateData.polo_ids = [];
       }
 
       await onSave(user.id, updateData);
