@@ -74,8 +74,8 @@ class RemViewSet(viewsets.ModelViewSet):
 
             combined_data.append({
                 "rem": RemSerializer(rem).data,
-                "consumo_diesel": diesel.diesel_consumido if diesel else 0,
-                "funcionarios_demitidos": demitidos.funcionarios_demitidos if demitidos else 0,
+                "consumo_diesel": DieselConsumidoSerializer(diesel).data if diesel else None,
+                "funcionarios_demitidos": FuncionariosDemitidosSerializer(demitidos).data if demitidos else None,
             })
         return Response(combined_data, status=HTTP_200_OK)
 

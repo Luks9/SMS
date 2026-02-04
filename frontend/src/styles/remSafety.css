@@ -1,0 +1,306 @@
+/* REM Safety Dashboard Custom Styles */
+
+/* Risk Level Borders */
+.has-border-success {
+  border: 2px solid #48bb78 !important;
+  border-radius: 6px;
+}
+
+.has-border-warning {
+  border: 2px solid #f6e05e !important;
+  border-radius: 6px;
+}
+
+.has-border-danger {
+  border: 2px solid #ef4444 !important;
+  border-radius: 6px;
+}
+
+/* Pulsing animation for critical alerts */
+@keyframes pulse-danger {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+  }
+}
+
+.pulse-critical {
+  animation: pulse-danger 2s infinite;
+}
+
+/* Table cell highlighting */
+.table tbody tr:hover td.has-background-success-light {
+  background-color: rgba(72, 187, 120, 0.3) !important;
+}
+
+.table tbody tr:hover td.has-background-warning-light {
+  background-color: rgba(246, 224, 94, 0.3) !important;
+}
+
+.table tbody tr:hover td.has-background-danger-light {
+  background-color: rgba(239, 68, 68, 0.3) !important;
+}
+
+.table tbody tr:hover td.has-background-danger {
+  background-color: rgba(220, 38, 38, 1) !important;
+}
+
+/* Company performance cards */
+.company-card {
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  border-left: 4px solid transparent;
+}
+
+.company-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.company-card.excellent {
+  border-left-color: #48bb78;
+}
+
+.company-card.acceptable {
+  border-left-color: #f6e05e;
+}
+
+.company-card.concerning {
+  border-left-color: #fb923c;
+}
+
+.company-card.critical {
+  border-left-color: #ef4444;
+}
+
+/* Safety metric boxes */
+.safety-metric-box {
+  border-radius: 8px;
+  padding: 1rem;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.safety-metric-box:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Chart containers */
+.chart-container {
+  position: relative;
+  padding: 1.5rem;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* Modal styling improvements */
+.modal-card {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.modal-card-head {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.modal-card-head .modal-card-title {
+  color: white;
+}
+
+.modal-card-head .subtitle {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.modal-card-head .delete {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+.modal-card-head .delete:hover {
+  background-color: rgba(255, 255, 255, 0.5);
+}
+
+/* Trend indicators */
+.trend-up {
+  color: #ef4444;
+  font-weight: bold;
+}
+
+.trend-down {
+  color: #48bb78;
+  font-weight: bold;
+}
+
+.trend-stable {
+  color: #94a3b8;
+}
+
+/* Alert boxes */
+.critical-alert {
+  border-left: 5px solid #ef4444;
+  background: linear-gradient(90deg, rgba(239, 68, 68, 0.1) 0%, transparent 100%);
+}
+
+.warning-alert {
+  border-left: 5px solid #f59e0b;
+  background: linear-gradient(90deg, rgba(245, 158, 11, 0.1) 0%, transparent 100%);
+}
+
+.success-alert {
+  border-left: 5px solid #10b981;
+  background: linear-gradient(90deg, rgba(16, 185, 129, 0.1) 0%, transparent 100%);
+}
+
+/* React-select customization for safety theme */
+.react-select__control {
+  border: 2px solid #e2e8f0;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.react-select__control:hover {
+  border-color: #cbd5e0;
+}
+
+.react-select__control--is-focused {
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.react-select__multi-value {
+  background-color: #667eea;
+  border-radius: 4px;
+}
+
+.react-select__multi-value__label {
+  color: white;
+  padding: 3px 6px;
+}
+
+.react-select__multi-value__remove {
+  color: white;
+  cursor: pointer;
+}
+
+.react-select__multi-value__remove:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+/* Responsive adjustments */
+@media screen and (max-width: 768px) {
+  .company-card {
+    margin-bottom: 1rem;
+  }
+  
+  .safety-metric-box {
+    margin-bottom: 0.5rem;
+  }
+  
+  .modal-card {
+    margin: 1rem;
+  }
+}
+
+/* Print styles for reports */
+@media print {
+  .button, .modal, .navbar, .pagination {
+    display: none !important;
+  }
+  
+  .table {
+    page-break-inside: avoid;
+  }
+  
+  .box {
+    box-shadow: none !important;
+    border: 1px solid #ddd;
+  }
+}
+
+/* Accessibility improvements */
+.has-background-danger .has-text-white,
+.has-background-success-dark .has-text-white {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* Loading states */
+.skeleton-loader {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+  border-radius: 4px;
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Tooltip styling */
+.tooltip-container {
+  position: relative;
+  display: inline-block;
+}
+
+.tooltip-text {
+  visibility: hidden;
+  width: 200px;
+  background-color: #334155;
+  color: #fff;
+  text-align: center;
+  border-radius: 6px;
+  padding: 8px;
+  position: absolute;
+  z-index: 1;
+  bottom: 125%;
+  left: 50%;
+  margin-left: -100px;
+  opacity: 0;
+  transition: opacity 0.3s;
+  font-size: 0.875rem;
+}
+
+.tooltip-container:hover .tooltip-text {
+  visibility: visible;
+  opacity: 1;
+}
+
+/* Status badges */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.status-badge.excellent {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.status-badge.acceptable {
+  background-color: #fef9c3;
+  color: #854d0e;
+}
+
+.status-badge.concerning {
+  background-color: #fed7aa;
+  color: #9a3412;
+}
+
+.status-badge.critical {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
