@@ -33,6 +33,8 @@ const CompanyManagement = () => {
   );
   const [exportingId, setExportingId] = useState(null);
   const [exportingFormat, setExportingFormat] = useState(null);
+  const [exportingRemId, setExportingRemId] = useState(null);
+  const [exportingRemFormat, setExportingRemFormat] = useState(null);
   const [exportError, setExportError] = useState('');
 
   const {
@@ -120,6 +122,48 @@ const CompanyManagement = () => {
     } finally {
       setExportingId(null);
       setExportingFormat(null);
+    }
+  };
+
+  const handleRemExport = async (evaluation, format) => {
+    try {
+      setExportError('');
+      setExportingRemId(evaluation.id);
+      setExportingRemFormat(format);
+      const token = getToken();
+      const periodo = moment(evaluation.period).format('YYYY-MM-DD');
+      const response = await axios.get(
+        `/api/rems/export/${format}/`,
+        {
+          params: {
+            company_id: selectedCompanyId,
+            periodo: periodo,
+          },
+          responseType: 'blob',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      const contentType =
+        format === 'pdf'
+          ? 'application/pdf'
+          : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      const blob = new Blob([response.data], { type: contentType });
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(blob);
+      const periodoFormatted = periodo.replace(/-/g, '');
+      link.download = `rem_${selectedCompanyId}_${periodoFormatted}.${format === 'pdf' ? 'pdf' : 'xlsx'}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(link.href);
+    } catch (error) {
+      console.error('Erro ao exportar REM:', error);
+      setExportError('Não foi possível exportar os dados REM. Tente novamente.');
+    } finally {
+      setExportingRemId(null);
+      setExportingRemFormat(null);
     }
   };
 
@@ -211,11 +255,13 @@ const CompanyManagement = () => {
                       <th></th>
                       <th></th>
                       <th>Exportar</th>
+                      <th>REM</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredEvaluations.map((evaluation) => {
                       const isExportingThis = exportingId === evaluation.id;
+                      const isExportingRemThis = exportingRemId === evaluation.id;
                       return (
                         <tr key={evaluation.id}>
                           <td>{moment(evaluation.period).format('MMM/YYYY')}</td>
@@ -288,6 +334,42 @@ const CompanyManagement = () => {
                                 )}
                               </button>
                             </div>
+                          </td>
+                          <td className="has-text-right">
+                            {evaluation.has_rem_data ? (
+                              <div className="buttons are-small is-justify-content-flex-end">
+                                <button
+                                  className="button is-light"
+                                  onClick={() => handleRemExport(evaluation, 'pdf')}
+                                  disabled={isExportingRemThis}
+                                  title="Exportar REM em PDF"
+                                >
+                                  {isExportingRemThis && exportingRemFormat === 'pdf' ? (
+                                    <FontAwesomeIcon icon={faSpinner} spin />
+                                  ) : (
+                                    <>
+                                      <FontAwesomeIcon icon={faFilePdf} /> &nbsp; PDF
+                                    </>
+                                  )}
+                                </button>
+                                <button
+                                  className="button is-light"
+                                  onClick={() => handleRemExport(evaluation, 'xlsx')}
+                                  disabled={isExportingRemThis}
+                                  title="Exportar REM em XLSX"
+                                >
+                                  {isExportingRemThis && exportingRemFormat === 'xlsx' ? (
+                                    <FontAwesomeIcon icon={faSpinner} spin />
+                                  ) : (
+                                    <>
+                                      <FontAwesomeIcon icon={faFileExcel} /> &nbsp; XLSX
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="tag is-light">Sem dados</span>
+                            )}
                           </td>
                         </tr>
                       );
