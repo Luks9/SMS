@@ -94,6 +94,7 @@ class EvaluationSerializer(serializers.ModelSerializer):
     is_expired = serializers.SerializerMethodField()
     fully_answered = serializers.SerializerMethodField()
     fully_evaluated = serializers.SerializerMethodField()
+    has_rem_data = serializers.SerializerMethodField()
 
     class Meta:
         model = Evaluation
@@ -118,7 +119,8 @@ class EvaluationSerializer(serializers.ModelSerializer):
             'is_expired',
             'fully_answered',
             'fully_evaluated',
-            'action_plan'
+            'action_plan',
+            'has_rem_data'
         ]
     
     # Métodos para os campos adicionados
@@ -163,6 +165,14 @@ class EvaluationSerializer(serializers.ModelSerializer):
         # Retorna o ID do plano de ação associado à avaliação ou None se não existir
         action_plan = obj.action_plans.first()  # Como só existe um plano de ação, pegamos o primeiro
         return action_plan.id if action_plan else None
+    
+    @extend_schema_field(serializers.BooleanField())
+    def get_has_rem_data(self, obj) -> bool:
+        """
+        Verifica se existe dados REM para a empresa e período desta avaliação
+        """
+        from apps.rem.models import Rem
+        return Rem.objects.filter(company=obj.company, periodo=obj.period).exists()
 
     def to_representation(self, instance):
         instance.refresh_status()
