@@ -27,11 +27,41 @@ from .serializers import (
     PoloSerializer
 )
 from rest_framework.pagination import PageNumberPagination
+import mimetypes
 
 class StandardResultsSetPagination(PageNumberPagination):
     page_size = 10
     page_size_query_param = 'page_size'
     max_page_size = 100
+
+def get_content_type(file_path):
+    """
+    Retorna o Content-Type correto baseado na extensão do arquivo.
+    Suporta: .pdf, .zip, .jpg, .jpeg, .png, .doc, .docx, .xlsx, .xls
+    """
+    content_type_map = {
+        '.pdf': 'application/pdf',
+        '.zip': 'application/zip',
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.png': 'image/png',
+        '.doc': 'application/msword',
+        '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        '.xls': 'application/vnd.ms-excel'
+    }
+    
+    # Obter extensão do arquivo
+    _, ext = os.path.splitext(file_path)
+    ext_lower = ext.lower()
+    
+    # Retornar content type específico ou usar mimetypes como fallback
+    if ext_lower in content_type_map:
+        return content_type_map[ext_lower]
+    
+    # Fallback para mimetypes.guess_type
+    guessed_type, _ = mimetypes.guess_type(file_path)
+    return guessed_type or 'application/octet-stream'
 
 
 @extend_schema(tags=['Empresas'])
@@ -470,8 +500,16 @@ class AnswerViewSet(viewsets.ModelViewSet):
 def download_attachment_respondent(request, answer_id):
     answer = get_object_or_404(Answer, pk=answer_id)
     file_path = answer.attachment_respondent.path  # Caminho absoluto no sistema de arquivos
-    response = FileResponse(open(file_path, 'rb'))
-    response['Content-Disposition'] = f'attachment; filename="{answer.attachment_respondent.name}"'
+    
+    if not os.path.exists(file_path):
+        raise Http404("Arquivo não existe no sistema.")
+    
+    # Obter o Content-Type correto
+    content_type = get_content_type(file_path)
+    
+    response = FileResponse(open(file_path, 'rb'), content_type=content_type, as_attachment=True)
+    response['Content-Disposition'] = f'attachment; filename="{os.path.basename(answer.attachment_respondent.name)}"'
+    response['X-Content-Type-Options'] = 'nosniff'
     return response
 
 
@@ -491,9 +529,14 @@ class ActionPlanViewSet(viewsets.ModelViewSet):
         if not plan_action.attachment or not os.path.exists(plan_action.attachment.path):
             raise Http404("Anexo não encontrado.")
 
-        # Retorna o arquivo diretamente com FileResponse sem 'with open'
-        response = FileResponse(open(plan_action.attachment.path, 'rb'))
+        # Obter o Content-Type correto
+        file_path = plan_action.attachment.path
+        content_type = get_content_type(file_path)
+        
+        # Retorna o arquivo diretamente com FileResponse com Content-Type correto
+        response = FileResponse(open(file_path, 'rb'), content_type=content_type, as_attachment=True)
         response['Content-Disposition'] = f'attachment; filename="{os.path.basename(plan_action.attachment.name)}"'
+        response['X-Content-Type-Options'] = 'nosniff'
         return response
 
 

@@ -312,6 +312,7 @@ def export_pdf(evaluation, request=None):
     filename = f"avaliacao_{evaluation.id}.pdf"
     response = HttpResponse(buffer, content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    response['X-Content-Type-Options'] = 'nosniff'
     return response
 
 
