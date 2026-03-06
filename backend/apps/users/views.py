@@ -79,12 +79,13 @@ class CustomLoginView(APIView):
                 if not user.is_superuser and not user.companies.exists():
                     logger.warning(f"Usuario sem empresa vinculada, tentando associacao por dominio: {user.username}")
                     processed_user = associate_user_with_company_by_domain(user)
-                    if processed_user is None or not processed_user.companies.exists():
-                        return Response({
-                            "detail": "Usuario nao possui empresa valida associada no sistema.",
-                            "username": user.username
-                        }, status=status.HTTP_403_FORBIDDEN)
-                    user = processed_user
+                    if processed_user is not None:
+                        user = processed_user
+                    else:
+                        logger.warning(
+                            "Login permitido sem empresa vinculada para usuario: %s",
+                            user.username,
+                        )
                 elif not user.is_superuser and not user.groups.exists():
                     logger.warning(f"Usuario autenticado sem grupos (login permitido): {user.username}")
 

@@ -82,6 +82,22 @@ class CustomLoginFallbackTests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("token", response.data)
 
+    @patch("apps.users.views.associate_user_with_company_by_domain", return_value=None)
+    @patch("apps.users.views.authenticate")
+    def test_login_allows_non_superuser_without_company(self, authenticate_mock, _associate_mock):
+        self.user.companies.clear()
+        authenticate_mock.return_value = self.user
+        request = self.factory.post(
+            "/api/users/login/",
+            HTTP_AUTHORIZATION="Bearer fake.jwt.token",
+        )
+
+        response = self.view(request)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("token", response.data)
+        self.assertEqual(response.data["user"]["companies"], [])
+
 
 class DomainAssociationTests(SimpleTestCase):
     @patch("apps.users.utils.domain_utils.Group.objects.get")

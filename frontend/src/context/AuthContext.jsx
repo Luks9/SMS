@@ -348,7 +348,12 @@ export const AuthProvider = ({ children }) => {
         }
       } catch (error) {
         console.error('Login falhou', error);
-        setMessage('Nao foi possivel concluir o login. Verifique sua conta corporativa e se sua empresa/grupo esta configurado no sistema.');
+        const apiDetail = error?.response?.data?.detail;
+        if (apiDetail) {
+          setMessage(apiDetail);
+        } else {
+          setMessage('Nao foi possivel concluir o login. Verifique sua conta corporativa e se sua empresa/grupo esta configurado no sistema.');
+        }
       }
     },
     [loadUserPoles, navigate, setActivePole, setPoles, handleCompanySelection]
