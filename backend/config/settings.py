@@ -151,14 +151,20 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 
 # Database
+DB_ENGINE = config('DB_ENGINE', default='django.db.backends.sqlite3')
+DB_DRIVER = config('DB_OPTIONS', default='')
+db_options = {}
+if 'sqlite3' not in DB_ENGINE and DB_DRIVER:
+    db_options['DRIVER'] = DB_DRIVER
+
 DATABASES = {
     'default': {
-        'ENGINE': config('DB_ENGINE', default='django.db.backends.sqlite3'),
+        'ENGINE': DB_ENGINE,
         'NAME': config('DB_NAME', default=BASE_DIR / 'db.sqlite3'),
         'USER': config('DB_USER', default=''),
         'PASSWORD': config('DB_PASSWORD', default=''),
         'HOST': config('DB_HOST', default='localhost'),
-        'OPTIONS': {'DRIVER' : config('DB_OPTIONS', default='')},
+        'OPTIONS': db_options,
     }
 }
 
@@ -214,3 +220,28 @@ LOGGING = {
         },
     },
 }
+
+# OneDrive / Graph upload settings
+ONEDRIVE_GRAPH_BASE_URL = config('ONEDRIVE_GRAPH_BASE_URL', default='https://graph.microsoft.com/v1.0')
+ONEDRIVE_TENANT_ID = config('ONEDRIVE_TENANT_ID', default='')
+ONEDRIVE_CLIENT_ID = config('ONEDRIVE_CLIENT_ID', default='')
+ONEDRIVE_CLIENT_SECRET = config('ONEDRIVE_CLIENT_SECRET', default='')
+ONEDRIVE_DRIVE_ID = config('ONEDRIVE_DRIVE_ID', default='')
+ONEDRIVE_BASE_PATH = config('ONEDRIVE_BASE_PATH', default='SMS')
+ONEDRIVE_TIMEOUT_SECONDS = config('ONEDRIVE_TIMEOUT_SECONDS', default=60, cast=int)
+ONEDRIVE_MAX_RETRIES = config('ONEDRIVE_MAX_RETRIES', default=3, cast=int)
+
+UPLOAD_CHUNK_SIZE = config('UPLOAD_CHUNK_SIZE', default=5242880, cast=int)
+UPLOAD_MAX_FILE_SIZE_MB = config('UPLOAD_MAX_FILE_SIZE_MB', default=200, cast=int)
+LEGACY_MULTIPART_THRESHOLD_MB = config('LEGACY_MULTIPART_THRESHOLD_MB', default=15, cast=int)
+UPLOAD_ALLOWED_EXTENSIONS = config(
+    'UPLOAD_ALLOWED_EXTENSIONS',
+    default='.pdf,.zip,.jpg,.jpeg,.png,.doc,.docx,.xlsx,.xls,.txt,.csv',
+    cast=Csv(),
+)
+
+STORAGE_PROVIDER = config('STORAGE_PROVIDER', default='onedrive')
+LOCAL_UPLOAD_TMP_DIR = config('LOCAL_UPLOAD_TMP_DIR', default=os.path.join(MEDIA_ROOT, '.upload_tmp'))
+LOCAL_UPLOAD_BASE_PATH = config('LOCAL_UPLOAD_BASE_PATH', default='attachments/resumable')
+LOCAL_UPLOAD_PART_TTL_HOURS = config('LOCAL_UPLOAD_PART_TTL_HOURS', default=24, cast=int)
+LOCAL_UPLOAD_CLEANUP_INTERVAL_SECONDS = config('LOCAL_UPLOAD_CLEANUP_INTERVAL_SECONDS', default=1800, cast=int)

@@ -1,0 +1,26 @@
+# Upload Resumable + OneDrive
+
+## Variaveis de ambiente
+
+```env
+ONEDRIVE_GRAPH_BASE_URL=https://graph.microsoft.com/v1.0
+ONEDRIVE_TENANT_ID=<tenant-id>
+ONEDRIVE_CLIENT_ID=<app-id>
+ONEDRIVE_CLIENT_SECRET=<secret>
+ONEDRIVE_DRIVE_ID=<drive-id>
+ONEDRIVE_BASE_PATH=SMS
+
+ONEDRIVE_TIMEOUT_SECONDS=60
+ONEDRIVE_MAX_RETRIES=3
+
+UPLOAD_CHUNK_SIZE=5242880
+UPLOAD_MAX_FILE_SIZE_MB=200
+LEGACY_MULTIPART_THRESHOLD_MB=15
+UPLOAD_ALLOWED_EXTENSIONS=.pdf,.zip,.jpg,.jpeg,.png,.doc,.docx,.xlsx,.xls,.txt,.csv
+
+STORAGE_PROVIDER=local
+LOCAL_UPLOAD_TMP_DIR=C:/inetpub/wwwroot/SMS/backend/media/.upload_tmp
+LOCAL_UPLOAD_BASE_PATH=attachments/resumable
+LOCAL_UPLOAD_PART_TTL_HOURS=24
+LOCAL_UPLOAD_CLEANUP_INTERVAL_SECONDS=1800
+```

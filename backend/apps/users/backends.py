@@ -22,11 +22,21 @@ class CustomAdfsBackend(AdfsAccessTokenBackend):
         Sobrescreve a criacao do usuario para limpar o username e associar empresa
         """
         username = claims.get(self.settings.USERNAME_CLAIM, '')
+        fallback_email = (
+            claims.get("email")
+            or claims.get("upn")
+            or claims.get("preferred_username")
+            or ""
+        )
 
         # Limpa o username antes de criar o usuario
-        cleaned_username = clean_username(username)
+        cleaned_username = clean_username(username, fallback_email=fallback_email)
         if not cleaned_username:
-            logger.error(f"Username invalido apos limpeza: {username}")
+            logger.error(
+                "Username invalido apos limpeza. username_claim=%s fallback_email=%s",
+                username,
+                fallback_email,
+            )
             return None
 
         # Verifica cache primeiro

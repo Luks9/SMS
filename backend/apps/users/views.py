@@ -9,6 +9,7 @@ from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from django.contrib.auth.models import User, Group
 from django.db.models import Q, Value
 from django.db.models.functions import Coalesce, Lower
+from django.db import transaction
 from .serializers import UserProfileSerializer, CustomLoginSerializer, UserSerializer, UserUpdateSerializer, GroupSerializer, UserGroupSerializer
 from apps.core.serializers import CompanySerializer
 from django.contrib.auth import authenticate
@@ -23,6 +24,16 @@ class StandardResultsSetPagination(PageNumberPagination):
     page_size = 10
     page_size_query_param = 'page_size'
     max_page_size = 100
+
+
+def _compute_scoped_company_changes(current_company_ids, scoped_company_ids, requested_company_ids):
+    current_set = set(current_company_ids or [])
+    scoped_set = set(scoped_company_ids or [])
+    requested_set = set(requested_company_ids or [])
+
+    remove_ids = (current_set & scoped_set) - requested_set
+    add_ids = requested_set - current_set
+    return remove_ids, add_ids
 
 
 class UserProfileView(APIView):
@@ -63,16 +74,19 @@ class CustomLoginView(APIView):
             if user is not None:
                 logger.info(f"Login bem-sucedido: {user.username}")
 
-                # Verificacao final apenas para casos extremos
-                if not user.is_superuser and (not user.companies.exists() or not user.groups.exists()):
-                    logger.warning(f"Reprocessamento emergencial para {user.username}")
+                # Reprocessamento emergencial apenas se usuario empresa estiver sem empresa associada.
+                # Grupo ausente nao deve impedir autenticacao.
+                if not user.is_superuser and not user.companies.exists():
+                    logger.warning(f"Usuario sem empresa vinculada, tentando associacao por dominio: {user.username}")
                     processed_user = associate_user_with_company_by_domain(user)
-                    if processed_user is None:
+                    if processed_user is None or not processed_user.companies.exists():
                         return Response({
-                            "detail": "Usuario nao possui dominio de empresa valida.",
+                            "detail": "Usuario nao possui empresa valida associada no sistema.",
                             "username": user.username
                         }, status=status.HTTP_403_FORBIDDEN)
                     user = processed_user
+                elif not user.is_superuser and not user.groups.exists():
+                    logger.warning(f"Usuario autenticado sem grupos (login permitido): {user.username}")
 
                 # Busca todas as empresas do usuario
                 companies = user.companies.all() if not user.is_superuser else []
@@ -157,30 +171,41 @@ class CustomTokenRefreshView(TokenRefreshView):
 
 class UserListView(APIView):
     permission_classes = [IsAuthenticated]
- 
+
     def get(self, request):
         pagination_class = StandardResultsSetPagination()
         users = User.objects.all()
-        
+        pole_id = request.headers.get('X-Polo-Id')
+
         # Verificar o tipo de filtro primeiro
         user_type = request.query_params.get('user_type', '').strip().lower()
-        
-        # Se for "sem_polo", NÃO aplicar o filtro de polo_id
-        if user_type != 'sem_polo':
-            pole_id = request.headers.get('X-Polo-Id')
-            if pole_id:
-                users = users.filter(
-                    Q(companies__poles__id=pole_id) |  # usuários de empresas do polo
-                    Q(poles__id=pole_id)
-                )
 
-        # Aplicar filtros de tipo de usuário
+        # Para listas regulares, aplicar contexto do polo selecionado.
+        if user_type != 'sem_polo' and pole_id:
+            users = users.filter(
+                Q(companies__poles__id=pole_id) |
+                Q(poles__id=pole_id)
+            )
+
+        # Aplicar filtros de tipo de usuario
         if user_type == 'avaliador':
             users = users.filter(is_superuser=True)
         elif user_type == 'empresa':
             users = users.filter(is_superuser=False)
         elif user_type == 'sem_polo':
-            users = users.filter(poles__isnull=True, is_active=True)
+            # "Sem polo" relativo ao contexto: sem vinculo com o polo selecionado.
+            users = users.filter(is_active=True)
+            if pole_id:
+                users = users.exclude(
+                    Q(companies__poles__id=pole_id) |
+                    Q(poles__id=pole_id)
+                )
+            else:
+                # Fallback sem contexto selecionado: sem vinculo de polo em nenhum lugar.
+                users = users.filter(
+                    poles__isnull=True,
+                    companies__poles__isnull=True,
+                )
 
         search = request.query_params.get('search', '').strip()
         if search:
@@ -204,7 +229,11 @@ class UserListView(APIView):
             elif normalized_search in {'empresa', 'company'}:
                 users = users.filter(is_superuser=False)
 
-        users = users.distinct().annotate(
+        users = users.distinct().prefetch_related(
+            'companies__poles',
+            'poles',
+            'groups',
+        ).annotate(
             first_name_sort=Lower(Coalesce('first_name', Value(''))),
             last_name_sort=Lower(Coalesce('last_name', Value(''))),
             username_sort=Lower(Coalesce('username', Value(''))),
@@ -230,57 +259,92 @@ class UserUpdateView(APIView):
     def put(self, request, user_id):
         user = get_object_or_404(User, id=user_id)
         serializer = UserUpdateSerializer(user, data=request.data, partial=True)
-        
-        if serializer.is_valid():
-            # Handle companies association (multiple companies)
-            company_ids = request.data.get('company_ids', [])
-            if company_ids and not user.is_superuser:
-                from apps.core.models import Company
-                try:
-                    companies = Company.objects.filter(id__in=company_ids)
-                    if companies.count() != len(company_ids):
-                        return Response(
-                            {'error': 'Uma ou mais empresas não foram encontradas'}, 
-                            status=status.HTTP_400_BAD_REQUEST
-                        )
-                    user.companies.set(companies)  # Set all companies at once
-                except Exception as e:
-                    return Response(
-                        {'error': f'Erro ao associar empresas: {str(e)}'}, 
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
-            elif user.is_superuser:
-                # Superusers shouldn't have company associations
-                user.companies.clear()
-            
+
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        from apps.core.models import Company, Polo
+
+        with transaction.atomic():
             serializer.save()
 
-            # --- Novo bloco para tratar polo_ids ---
+            # Atualizacao de empresas isolada por polo (nunca global por usuario).
+            if not user.is_superuser and 'company_ids' in request.data:
+                raw_company_ids = request.data.get('company_ids', [])
+                try:
+                    requested_company_ids = {int(company_id) for company_id in raw_company_ids}
+                except (TypeError, ValueError):
+                    return Response(
+                        {'error': 'company_ids invalido. Envie uma lista de IDs de empresas.'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                active_polo_id = request.data.get('active_polo_id') or request.headers.get('X-Polo-Id')
+                if not active_polo_id:
+                    return Response(
+                        {'error': 'Contexto de polo obrigatorio para editar empresas deste usuario.'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                try:
+                    active_polo_id = int(active_polo_id)
+                except (TypeError, ValueError):
+                    return Response(
+                        {'error': 'active_polo_id invalido.'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                active_polo = Polo.objects.filter(id=active_polo_id, is_active=True).first()
+                if not active_polo:
+                    return Response(
+                        {'error': 'Polo ativo nao encontrado.'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                scoped_company_ids = set(
+                    Company.objects.filter(poles__id=active_polo_id).values_list('id', flat=True)
+                )
+
+                invalid_ids = requested_company_ids - scoped_company_ids
+                if invalid_ids:
+                    return Response(
+                        {
+                            'error': 'Uma ou mais empresas nao pertencem ao polo em edicao.',
+                            'invalid_company_ids': sorted(invalid_ids),
+                        },
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                current_company_ids = set(user.companies.values_list('id', flat=True))
+                remove_ids, add_ids = _compute_scoped_company_changes(
+                    current_company_ids=current_company_ids,
+                    scoped_company_ids=scoped_company_ids,
+                    requested_company_ids=requested_company_ids,
+                )
+
+                if remove_ids:
+                    user.companies.remove(*Company.objects.filter(id__in=remove_ids))
+                if add_ids:
+                    user.companies.add(*Company.objects.filter(id__in=add_ids))
+
+            # Superusers mantem gestao de polos explicita.
             polo_ids = request.data.get('polo_ids', None)
-            if polo_ids is not None:
-                if user.is_superuser:
-                    from apps.core.models import Polo
-                    try:
-                        polos = Polo.objects.filter(id__in=polo_ids)
-                        if polos.count() != len(polo_ids):
-                            return Response(
-                                {'error': 'Um ou mais polos nao foram encontrados'}, 
-                                status=status.HTTP_400_BAD_REQUEST
-                            )
-                        user.poles.set(polos)
-                    except Exception as e:
+            if polo_ids is not None and user.is_superuser:
+                try:
+                    polos = Polo.objects.filter(id__in=polo_ids)
+                    if polos.count() != len(polo_ids):
                         return Response(
-                            {'error': f'Erro ao associar polos: {str(e)}'}, 
+                            {'error': 'Um ou mais polos nao foram encontrados'},
                             status=status.HTTP_400_BAD_REQUEST
                         )
-                else:
-                    user.poles.clear()
-            # --- Fim do bloco novo ---
+                    user.poles.set(polos)
+                except Exception as e:
+                    return Response(
+                        {'error': f'Erro ao associar polos: {str(e)}'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
 
-            return Response(UserSerializer(user).data, status=status.HTTP_200_OK)
-        
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+        return Response(UserSerializer(user).data, status=status.HTTP_200_OK)
 
 class GroupListView(APIView):
     permission_classes = [IsAuthenticated]
@@ -321,4 +385,7 @@ class UserGroupManagementView(APIView):
             }, status=status.HTTP_200_OK)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
 

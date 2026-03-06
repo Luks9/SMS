@@ -9,7 +9,8 @@ class EvaluationTestCase(TestCase):
         self.user = User.objects.create_user(username='test user', password='12345')
         
         # Criando uma empresa
-        self.company = Company.objects.create(name='Test Company', cnpj='00.000.000/0001-91', user=self.user)
+        self.company = Company.objects.create(name='Test Company', cnpj='00.000.000/0001-91')
+        self.company.users.add(self.user)
         
         # Criando uma categoria de perguntas
         self.category = CategoryQuestion.objects.create(name='Safety', weight=1.0)
