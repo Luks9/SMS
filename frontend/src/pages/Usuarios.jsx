@@ -32,7 +32,6 @@ const Usuarios = () => {
 
   const {
     companies,
-    users: companyUsers,
     count: companyCount,
     next: companyNext,
     previous: companyPrevious,
@@ -127,6 +126,11 @@ const Usuarios = () => {
 
   const totalPages = Math.ceil(count / 10);
   const companyTotalPages = Math.ceil(companyCount / 10);
+  const buildPageWindow = (current, total, size = 5) => {
+    const windowSize = Math.min(size, total);
+    const start = Math.max(1, Math.min(current - Math.floor(windowSize / 2), total - windowSize + 1));
+    return Array.from({ length: windowSize }, (_, i) => start + i);
+  };
 
   return (
     <Layout>
@@ -156,6 +160,7 @@ const Usuarios = () => {
               onSearch={handleSearch}
               filterValue={userTypeFilter}
               onFilterChange={handleUserTypeFilter}
+              searchPlaceholder="Buscar por nome, email, empresa, polo, perfil ou status..."
             />
 
             {/* Paginação de Usuários */}
@@ -176,8 +181,7 @@ const Usuarios = () => {
                   Próximo
                 </button>
                 <ul className="pagination-list">
-                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                    const pageNum = i + 1;
+                  {buildPageWindow(currentPage, totalPages).map((pageNum) => {
                     return (
                       <li key={pageNum}>
                         <button 
@@ -246,8 +250,7 @@ const Usuarios = () => {
                   Próximo
                 </button>
                 <ul className="pagination-list">
-                  {Array.from({ length: Math.min(companyTotalPages, 5) }, (_, i) => {
-                    const pageNum = i + 1;
+                  {buildPageWindow(companyCurrentPage, companyTotalPages).map((pageNum) => {
                     return (
                       <li key={pageNum}>
                         <button 

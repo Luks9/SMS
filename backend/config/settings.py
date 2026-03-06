@@ -37,6 +37,7 @@ ALLOWED_HOSTS = config('ALLOWED_HOSTS', cast=Csv())
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_AUTHENTICATION_CLASSES': [
+        'apps.users.authentication.LenientJWTAuthentication',
         'django_auth_adfs.rest_framework.AdfsAccessTokenAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ],
@@ -110,7 +111,7 @@ AUTH_ADFS = {
         "last_name": "family_name",
         "email": "email"
     },
-    "GROUPS_CLAIM": config("ADFS_GROUPS_CLAIM", default="groups"),
+    "GROUPS_CLAIM": None,
     "USERNAME_CLAIM": config("ADFS_USERNAME_CLAIM", default="upn"),
     "LOGIN_EXEMPT_URLS": [
         '^api',

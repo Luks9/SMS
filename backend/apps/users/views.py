@@ -7,7 +7,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from django.contrib.auth.models import User, Group
-from django.db.models import Q
+from django.db.models import Q, Value
+from django.db.models.functions import Coalesce, Lower
 from .serializers import UserProfileSerializer, CustomLoginSerializer, UserSerializer, UserUpdateSerializer, GroupSerializer, UserGroupSerializer
 from apps.core.serializers import CompanySerializer
 from django.contrib.auth import authenticate
@@ -49,16 +50,16 @@ class CustomLoginView(APIView):
     authentication_classes = []
     serializer_class = CustomLoginSerializer
 
-    def post(self, request):        
-        auth_header = request.headers.get('Authorization')
-        
-        if not auth_header or not auth_header.startswith("Bearer "):
-            return Response({"detail": "Token não fornecido."}, status=status.HTTP_401_UNAUTHORIZED)
+    def post(self, request):
+        auth_header = request.headers.get('Authorization', '')
+        scheme, _, adfs_token = auth_header.partition(' ')
 
-        adfs_token = auth_header.split(" ")[1]
+        if scheme.lower() != 'bearer' or not adfs_token:
+            return Response({"detail": "Token nao fornecido."}, status=status.HTTP_401_UNAUTHORIZED)
 
         try:
-            user = authenticate(request, access_token=adfs_token.encode("utf-8"))
+            # Keep token as str; django-auth-adfs expects a textual JWT.
+            user = authenticate(request, access_token=adfs_token)
             if user is not None:
                 logger.info(f"Login bem-sucedido: {user.username}")
 
@@ -104,17 +105,15 @@ class CustomLoginView(APIView):
                     samesite='Lax'
                 )
                 return response
-            else:
-                return Response({"detail": "Token invalido ou usuario nao autorizado."}, status=status.HTTP_401_UNAUTHORIZED)
-                
+
+            return Response({"detail": "Token invalido ou usuario nao autorizado."}, status=status.HTTP_401_UNAUTHORIZED)
 
         except Exception as e:
-            logger.error(f"Erro no login: {str(e)}")
+            logger.exception(f"Erro no login: {str(e)}")
             return Response({
                 "detail": "Erro interno durante o login.",
                 "error": str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-         
 
 class CustomTokenRefreshView(TokenRefreshView):
     def post(self, request, *args, **kwargs):
@@ -185,15 +184,31 @@ class UserListView(APIView):
 
         search = request.query_params.get('search', '').strip()
         if search:
+            normalized_search = search.lower()
             users = users.filter(
                 Q(username__icontains=search) |
                 Q(first_name__icontains=search) |
                 Q(last_name__icontains=search) |
                 Q(email__icontains=search) |
-                Q(companies__name__icontains=search)
+                Q(companies__name__icontains=search) |
+                Q(groups__name__icontains=search) |
+                Q(poles__name__icontains=search)
             )
 
-        users = users.distinct()
+            if normalized_search in {'ativo', 'active'}:
+                users = users.filter(is_active=True)
+            elif normalized_search in {'inativo', 'inactive'}:
+                users = users.filter(is_active=False)
+            elif normalized_search in {'avaliador', 'admin', 'superuser'}:
+                users = users.filter(is_superuser=True)
+            elif normalized_search in {'empresa', 'company'}:
+                users = users.filter(is_superuser=False)
+
+        users = users.distinct().annotate(
+            first_name_sort=Lower(Coalesce('first_name', Value(''))),
+            last_name_sort=Lower(Coalesce('last_name', Value(''))),
+            username_sort=Lower(Coalesce('username', Value(''))),
+        ).order_by('first_name_sort', 'last_name_sort', 'username_sort')
 
         paginated_users = pagination_class.paginate_queryset(users, request)
         serializer = UserSerializer(paginated_users, many=True)

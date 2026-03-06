@@ -8,14 +8,28 @@ import AuthProvider from "./context/AuthContext"; // Certifique-se de importar c
 import { MsalProvider } from "@azure/msal-react";
 import { msalInstance } from "./auth/msalInstance";
 
-createRoot(document.getElementById('root')).render(
-  <MsalProvider instance={msalInstance}>
-    <BrowserRouter>
-      <AuthProvider>
-        <Routes>
-          <Route path="*" element={<App />} />
-        </Routes>
-      </AuthProvider>
-    </BrowserRouter>
-  </MsalProvider>
-);
+const root = createRoot(document.getElementById('root'));
+
+const renderApp = () => {
+  root.render(
+    <MsalProvider instance={msalInstance}>
+      <BrowserRouter>
+        <AuthProvider>
+          <Routes>
+            <Route path="*" element={<App />} />
+          </Routes>
+        </AuthProvider>
+      </BrowserRouter>
+    </MsalProvider>
+  );
+};
+
+msalInstance
+  .initialize()
+  .then(() => {
+    renderApp();
+  })
+  .catch((error) => {
+    console.error("Falha ao inicializar MSAL:", error);
+    renderApp();
+  });

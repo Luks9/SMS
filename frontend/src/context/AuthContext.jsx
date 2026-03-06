@@ -36,6 +36,22 @@ export const AuthProvider = ({ children }) => {
 
   const navigate = useNavigate();
 
+  const parseStoredCompany = useCallback((rawValue) => {
+    if (!rawValue) return null;
+    try {
+      return JSON.parse(rawValue);
+    } catch (error) {
+      console.warn('selectedCompany invalida no storage, limpando valor.', error);
+      localStorage.removeItem('selectedCompany');
+      return null;
+    }
+  }, []);
+
+  const isCompanyAllowedForUser = useCallback((company, authUser) => {
+    if (!company || !authUser || authUser.is_superuser) return false;
+    return (authUser.companies || []).some((item) => String(item.id) === String(company.id));
+  }, []);
+
   useEffect(() => {
     userRef.current = user;
   }, [user, userRef]);
@@ -48,16 +64,19 @@ export const AuthProvider = ({ children }) => {
     const savedUserRaw = localStorage.getItem('user');
     const savedUser = savedUserRaw ? JSON.parse(savedUserRaw) : null;
     const savedToken = localStorage.getItem('token');
-    const savedCompany = localStorage.getItem('selectedCompany');
+    const savedCompany = parseStoredCompany(localStorage.getItem('selectedCompany'));
 
     if (savedUser && savedToken) {
       setUser(savedUser);
       setToken(savedToken);
       
       // Se há uma empresa salva, configure-a
-      if (savedCompany && !savedUser.is_superuser) {
-        const company = JSON.parse(savedCompany);
-        setSelectedCompany(company);
+      if (savedCompany && isCompanyAllowedForUser(savedCompany, savedUser)) {
+        setSelectedCompany(savedCompany);
+        localStorage.setItem('companyId', savedCompany.id);
+      } else if (!savedUser.is_superuser) {
+        localStorage.removeItem('selectedCompany');
+        localStorage.removeItem('companyId');
       }
       
       axios.defaults.headers.common.Authorization = `Bearer ${savedToken}`;
@@ -65,7 +84,7 @@ export const AuthProvider = ({ children }) => {
     }
 
     setIsLoading(false);
-  }, [loadUserPoles]);
+  }, [isCompanyAllowedForUser, loadUserPoles, parseStoredCompany]);
 
   useEffect(() => {
     if (token) {
@@ -209,7 +228,11 @@ export const AuthProvider = ({ children }) => {
     };
   }, [logout, verifyAndRefreshToken]);
 
-  const handleCompanySelection = useCallback((company) => {
+  const handleCompanySelection = useCallback((company, baseUser = user) => {
+    if (!company || !baseUser) {
+      return;
+    }
+
     setSelectedCompany(company);
     setShowCompanySelection(false);
     
@@ -219,7 +242,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('userType', 'empresa');
     
     // Atualizar o usuário com a empresa selecionada para compatibilidade
-    const updatedUser = { ...user, company: company };
+    const updatedUser = { ...baseUser, company: company };
     setUser(updatedUser);
     localStorage.setItem('user', JSON.stringify(updatedUser));
     

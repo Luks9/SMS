@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useState } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import CompanySelectionModal from '../components/CompanySelectionModal';
 import Message from '../components/Message';
@@ -23,7 +23,45 @@ const Login = () => {
   } = useContext(AuthContext);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
-  const handleLogin = () => {
+  const completeLogin = useCallback(async (response) => {
+    if (!response?.account) {
+      throw new Error('Conta Microsoft nao retornada no login.');
+    }
+
+    instance.setActiveAccount(response.account);
+
+    let accessToken = response.accessToken;
+    if (!accessToken) {
+      const tokenResponse = await instance.acquireTokenSilent({
+        ...loginRequest,
+        account: response.account,
+      });
+      accessToken = tokenResponse?.accessToken;
+    }
+
+    if (!accessToken) {
+      throw new Error('Token de acesso nao retornado pela Microsoft.');
+    }
+
+    await login(accessToken);
+  }, [instance, login]);
+
+  useEffect(() => {
+    instance
+      .handleRedirectPromise()
+      .then((response) => {
+        if (response) {
+          return completeLogin(response);
+        }
+        return null;
+      })
+      .catch((error) => {
+        console.error(error);
+        setMessage('Nao foi possivel concluir o retorno da autenticacao Microsoft. Tente novamente.');
+      });
+  }, [instance, completeLogin, setMessage]);
+
+  const handleLogin = async () => {
     setMessage(null);
 
     if (inProgress && inProgress !== 'none') {
@@ -33,21 +71,15 @@ const Login = () => {
 
     setIsAuthenticating(true);
 
-    instance
-      .loginPopup(loginRequest)
-      .then((response) => {
-        if (response?.account) {
-          instance.setActiveAccount(response.account);
-        }
-        return login(response.accessToken);
-      })
-      .catch((error) => {
-        console.error(error);
-        setMessage('Nao foi possivel completar a autenticacao com a Microsoft. Feche janelas de login abertas e tente novamente.');
-      })
-      .finally(() => {
-        setIsAuthenticating(false);
-      });
+    try {
+      setMessage('Redirecionando para autenticacao Microsoft...');
+      await instance.loginRedirect(loginRequest);
+    } catch (error) {
+      console.error(error);
+      setMessage('Nao foi possivel completar a autenticacao com a Microsoft. Feche janelas de login abertas e tente novamente.');
+    } finally {
+      setIsAuthenticating(false);
+    }
   };
 
   const handleCloseCompanyModal = () => {

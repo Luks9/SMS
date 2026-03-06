@@ -13,7 +13,6 @@ const TableSearchInput = ({
 }) => {
   const [internalValue, setInternalValue] = useState(value);
   const onSearchRef = useRef(onSearch);
-  const MIN_SEARCH_CHARS = 3;
 
   useEffect(() => {
     onSearchRef.current = onSearch;
@@ -35,9 +34,7 @@ const TableSearchInput = ({
       return;
     }
 
-    if (trimmedTerm.length > MIN_SEARCH_CHARS) {
-      onSearchRef.current(trimmedTerm);
-    }
+    onSearchRef.current(trimmedTerm);
   };
 
   const handleSubmit = (event) => {
@@ -55,7 +52,7 @@ const TableSearchInput = ({
   };
 
   const trimmedValue = internalValue.trim();
-  const canTriggerSearch = trimmedValue.length === 0 || trimmedValue.length > MIN_SEARCH_CHARS;
+  const canTriggerSearch = true;
   const sizeClass = size ? `is-${size}` : '';
   const inputClass = ['input', sizeClass].filter(Boolean).join(' ');
   const formClassName = className ? `field has-addons ${className}` : 'field has-addons';

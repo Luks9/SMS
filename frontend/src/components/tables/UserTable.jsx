@@ -10,12 +10,42 @@ const UserTable = ({
   paginationLoading,
   searchValue = '',
   onSearch,
-  searchPlaceholder = 'Buscar usuário...',
+  searchPlaceholder = 'Buscar usuario...',
   filterValue = 'all',
   onFilterChange = () => {},
 }) => {
   const showEmptyState = !loading && users.length === 0;
   const disableSearch = loading || paginationLoading;
+
+  const sortedUsers = [...users].sort((a, b) => {
+    const nameA = `${a.first_name || ''} ${a.last_name || ''}`.trim() || a.username || a.email || '';
+    const nameB = `${b.first_name || ''} ${b.last_name || ''}`.trim() || b.username || b.email || '';
+    return nameA.localeCompare(nameB, 'pt-BR', { sensitivity: 'base' });
+  });
+
+  const getDisplayName = (user) => {
+    const fullName = `${user.first_name || ''} ${user.last_name || ''}`.trim();
+    if (fullName) return fullName;
+    if (user.username) return user.username;
+    return user.email || '-';
+  };
+
+  const getCompanyText = (user) => {
+    if (user.is_superuser) return '-';
+    const companyNames = (user.companies || []).map((company) => company?.name).filter(Boolean);
+    return companyNames.length ? companyNames.sort((a, b) => a.localeCompare(b, 'pt-BR')).join(', ') : '-';
+  };
+
+  const getPoleText = (user) => {
+    const poleNames = (user.polos || []).map((pole) => pole?.name).filter(Boolean);
+    return poleNames.length ? poleNames.sort((a, b) => a.localeCompare(b, 'pt-BR')).join(', ') : '-';
+  };
+
+  const getRoleLabel = (user) => {
+    if (user.is_superuser) return 'Avaliador';
+    const groupNames = (user.groups || []).filter(Boolean);
+    return groupNames.length ? groupNames.sort((a, b) => a.localeCompare(b, 'pt-BR')).join(', ') : 'Empresa';
+  };
 
   return (
     <div>
@@ -29,7 +59,6 @@ const UserTable = ({
         }}
       >
         <div style={{ minWidth: '160px' }}>
-          
           <div className="select is-fullwidth is-small">
             <select
               id="user-type-filter"
@@ -45,12 +74,12 @@ const UserTable = ({
           </div>
         </div>
 
-        <div style={{ maxWidth: '360px' }}>
+        <div style={{ maxWidth: '460px', width: '100%' }}>
           <TableSearchInput
             value={searchValue}
             onSearch={onSearch}
             isLoading={disableSearch}
-            placeholder={searchPlaceholder}
+            placeholder={searchPlaceholder || 'Buscar por nome, email, empresa, polo, perfil ou status...'}
           />
         </div>
       </div>
@@ -83,7 +112,7 @@ const UserTable = ({
             </div>
           </div>
         ) : showEmptyState ? (
-          <p>Nenhum usuário encontrado.</p>
+          <p>Nenhum usuario encontrado.</p>
         ) : (
           <div className="table-container">
             <table className="table is-fullwidth is-striped is-hoverable">
@@ -92,19 +121,19 @@ const UserTable = ({
                   <th>Nome</th>
                   <th>Email</th>
                   <th>Empresa</th>
+                  <th>Polo(s)</th>
                   <th>Status</th>
-                  <th>Permissões</th>
+                  <th>Perfil</th>
                   <th>Editar</th>
                 </tr>
               </thead>
               <tbody>
-                {users.map((user) => (
+                {sortedUsers.map((user) => (
                   <tr key={user.id}>
-                    <td>
-                      {user.first_name} {user.last_name}
-                    </td>
-                    <td>{user.email}</td>
-                    <td>{user.is_superuser ? '-' : user.companies[0]?.name}</td>
+                    <td>{getDisplayName(user)}</td>
+                    <td>{user.email || '-'}</td>
+                    <td>{getCompanyText(user)}</td>
+                    <td>{getPoleText(user)}</td>
                     <td>
                       <span className={`tag ${user.is_active ? 'is-success' : 'is-danger'}`}>
                         <FontAwesomeIcon icon={user.is_active ? faCheck : faTimes} />
@@ -112,13 +141,9 @@ const UserTable = ({
                       </span>
                     </td>
                     <td>
-                      {user.is_superuser ? (
-                        <span className="tag is-info" title={user.is_staff ? 'Staff' : ''}>
-                          Avaliador
-                        </span>
-                      ) : (
-                        <span className="tag is-warning">Empresa</span>
-                      )}
+                      <span className={`tag ${user.is_superuser ? 'is-info' : 'is-warning'}`}>
+                        {getRoleLabel(user)}
+                      </span>
                     </td>
                     <td>
                       <div className="buttons">
@@ -126,6 +151,7 @@ const UserTable = ({
                           className="button is-small is-info"
                           onClick={() => onEdit(user)}
                           disabled={paginationLoading}
+                          title="Editar usuario"
                         >
                           <FontAwesomeIcon icon={faEdit} />
                         </button>
