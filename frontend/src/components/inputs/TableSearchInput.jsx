@@ -51,7 +51,6 @@ const TableSearchInput = ({
     triggerSearch('');
   };
 
-  const trimmedValue = internalValue.trim();
   const canTriggerSearch = true;
   const sizeClass = size ? `is-${size}` : '';
   const inputClass = ['input', sizeClass].filter(Boolean).join(' ');

@@ -1,0 +1,45 @@
+.entity-chip-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 100%;
+  cursor: help;
+}
+
+.entity-chip-abbr {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.entity-chip-main {
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.entity-chip-extra {
+  min-width: 2.15rem;
+  justify-content: center;
+}
+
+.entity-chip-context {
+  font-weight: 600;
+}
+
+@media (max-width: 1024px) {
+  .entity-chip-main {
+    max-width: 140px;
+  }
+}
+
+@media (max-width: 768px) {
+  .entity-chip-group {
+    flex-wrap: wrap;
+    row-gap: 0.2rem;
+  }
+
+  .entity-chip-main {
+    max-width: 100%;
+  }
+}

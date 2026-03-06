@@ -1,5 +1,5 @@
 // src/hooks/useFetchCompany.jsx
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useContext, useCallback } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
 
@@ -10,14 +10,19 @@ const useFetchCompany = (onlyActive = null) => {
   const [loading, setLoading] = useState(true);
 
   // Função para buscar as empresas
-  const fetchCompanies = async () => {
+  const fetchCompanies = useCallback(async () => {
     try {
       const token = getToken();
+      if (!token) {
+        setCompanies([]);
+        return;
+      }
 
       const params = {};
       if (onlyActive !== undefined && onlyActive !== null) {
         params.is_active = onlyActive;
       }
+      params._ts = Date.now();
       const response = await axios.get('/api/companies/all/', {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -30,12 +35,12 @@ const useFetchCompany = (onlyActive = null) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [getToken, onlyActive]);
 
   useEffect(() => {
     setLoading(true);
     fetchCompanies();
-  }, [selectedPoleId]);
+  }, [fetchCompanies, selectedPoleId]);
 
   return { companies, loading, fetchCompanies };
 };

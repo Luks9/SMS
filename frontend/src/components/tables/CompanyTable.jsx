@@ -14,6 +14,8 @@ const CompanyTable = ({
   searchPlaceholder = 'Buscar empresa...'
 }) => {
   const [deleteError, setDeleteError] = useState(null);
+  const [companyToDelete, setCompanyToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const searchIsLoading = paginationLoading;
   const isEmpty = companies.length === 0;
 
@@ -30,11 +32,27 @@ const CompanyTable = ({
       setDeleteError(`Nao e possivel excluir a empresa "${company.name}" pois possui avaliacoes ativas associadas.`);
       return;
     }
+    setDeleteError(null);
+    setCompanyToDelete(company);
+  };
 
-    if (window.confirm(`Tem certeza que deseja deletar a empresa "${company.name}"?`)) {
-      setDeleteError(null);
-      onDelete(company.id);
+  const handleConfirmDelete = async () => {
+    if (!companyToDelete || isDeleting) return;
+
+    try {
+      setIsDeleting(true);
+      await onDelete(companyToDelete.id);
+      setCompanyToDelete(null);
+    } catch (error) {
+      setDeleteError('Erro ao excluir empresa. Tente novamente.');
+    } finally {
+      setIsDeleting(false);
     }
+  };
+
+  const handleCancelDelete = () => {
+    if (isDeleting) return;
+    setCompanyToDelete(null);
   };
 
   return (
@@ -133,6 +151,48 @@ const CompanyTable = ({
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {companyToDelete && (
+        <div className="modal is-active">
+          <div className="modal-background" onClick={handleCancelDelete}></div>
+          <div className="modal-card">
+            <header className="modal-card-head">
+              <p className="modal-card-title">Confirmar exclusao</p>
+              <button
+                type="button"
+                className="delete"
+                aria-label="close"
+                onClick={handleCancelDelete}
+                disabled={isDeleting}
+              />
+            </header>
+            <section className="modal-card-body">
+              <p>
+                Tem certeza que deseja excluir a empresa <strong>{companyToDelete.name}</strong>?
+              </p>
+              <p className="has-text-danger mt-3">Essa operacao nao pode ser desfeita.</p>
+            </section>
+            <footer className="modal-card-foot">
+              <button
+                type="button"
+                className={`button is-danger ${isDeleting ? 'is-loading' : ''}`}
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+              >
+                Excluir
+              </button>
+              <button
+                type="button"
+                className="button"
+                onClick={handleCancelDelete}
+                disabled={isDeleting}
+              >
+                Cancelar
+              </button>
+            </footer>
+          </div>
         </div>
       )}
     </div>

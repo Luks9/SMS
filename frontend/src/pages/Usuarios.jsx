@@ -10,7 +10,7 @@ import { AuthContext } from '../context/AuthContext';
 
 
 const Usuarios = () => {
-  const { selectedPoleId } = useContext(AuthContext);
+  const { selectedPoleId, selectedPole } = useContext(AuthContext);
   const { 
     users, 
     groups, 
@@ -51,6 +51,7 @@ const Usuarios = () => {
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState(null);
   const [isCompanyModalOpen, setIsCompanyModalOpen] = useState(false);
+  const [companyRefreshKey, setCompanyRefreshKey] = useState(0);
   const is_staff = localStorage.getItem('is_staff') === 'true';
 
   useEffect(() => {
@@ -79,11 +80,13 @@ const Usuarios = () => {
 
   const handleSaveUser = async (userId, userData) => {
     await updateUser(userId, userData);
+    await fetchUsers(currentPage, searchTerm, userTypeFilter);
   };
 
   const handleSaveCompany = async (companyId, companyData) => {
     try {
       await updateCompany(companyId, companyData);
+      setCompanyRefreshKey((prev) => prev + 1);
       handleCloseCompanyModal();
     } catch (error) {
       console.error('Erro ao salvar empresa:', error);
@@ -92,11 +95,13 @@ const Usuarios = () => {
 
   const handleManageGroups = async (userId, groupIds, action) => {
     await manageUserGroups(userId, groupIds, action);
+    await fetchUsers(currentPage, searchTerm, userTypeFilter);
   };
 
   const handleDeleteCompany = async (companyId) => {
     try {
       await deleteCompany(companyId);
+      setCompanyRefreshKey((prev) => prev + 1);
     } catch (error) {
       console.error('Erro ao deletar empresa:', error);
     }
@@ -118,6 +123,7 @@ const Usuarios = () => {
   const handleCreateCompanySubmit = async (companyData) => {
     try {
       await createCompany(companyData);
+      setCompanyRefreshKey((prev) => prev + 1);
       handleCloseCompanyModal();
     } catch (error) {
       console.error('Erro ao criar empresa:', error);
@@ -156,6 +162,7 @@ const Usuarios = () => {
               loading={loading}
               onEdit={handleEditUser}
               paginationLoading={paginationLoading}
+              selectedPoleId={selectedPoleId}
               searchValue={searchTerm}
               onSearch={handleSearch}
               filterValue={userTypeFilter}
@@ -274,6 +281,9 @@ const Usuarios = () => {
           user={selectedUser}
           groups={groups}
           isOpen={isUserModalOpen}
+          selectedPoleId={selectedPoleId}
+          selectedPoleName={selectedPole?.name || ''}
+          companyRefreshKey={companyRefreshKey}
           onClose={handleCloseUserModal}
           onSave={handleSaveUser}
           onManageGroups={handleManageGroups}

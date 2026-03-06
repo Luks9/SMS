@@ -132,10 +132,22 @@ const AnswerList = ({ questions, fetchEvaluationDetails }) => {
     }
   };
 
-  const handleDownload = async (answerId, fileName) => {
+  const handleDownload = async (answer) => {
+    if (answer?.attachment_respondent_file_id) {
+      const token = getToken();
+      const downloadResponse = await axios.get(`/api/files/${answer.attachment_respondent_file_id}/download/?mode=json`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      window.open(downloadResponse.data.url, '_blank', 'noopener,noreferrer');
+      return;
+    }
+
     try {
       const token = getToken();
-      const response = await axios.get(`/api/download/attachment_respondent/${answerId}/`, {
+      const fileName = answer?.attachment_respondent?.split('/').pop() || answer?.attachment_respondent_name || 'anexo';
+      const response = await axios.get(`/api/download/attachment_respondent/${answer.id}/`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -199,9 +211,9 @@ const AnswerList = ({ questions, fetchEvaluationDetails }) => {
                         {ANSWER_CHOICES_MAP[answer.answer_respondent]?.label || 'Aguardando resposta'}
                       </span>
                     </p>
-                    {answer.attachment_respondent ? (
+                    {answer.attachment_respondent || answer.attachment_respondent_file_id ? (
                     <button
-                        onClick={() => handleDownload(answer.id, answer.attachment_respondent.split('/').pop())}
+                        onClick={() => handleDownload(answer)}
                     >
                         <FontAwesomeIcon icon={faFileDownload} /> Baixar Anexo
                     </button>

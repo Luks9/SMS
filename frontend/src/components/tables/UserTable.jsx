@@ -1,13 +1,17 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEdit, faCheck, faTimes, faSpinner } from '@fortawesome/free-solid-svg-icons';
 import TableSearchInput from '../inputs/TableSearchInput';
+import '../../styles/UserTableChips.css';
+import CompanyCell from './company-cell/CompanyCell';
+import { mapUserCompanyData } from '../../utils/companyContext';
 
 const UserTable = ({
   users,
   loading,
   onEdit,
   paginationLoading,
+  selectedPoleId = null,
   searchValue = '',
   onSearch,
   searchPlaceholder = 'Buscar usuario...',
@@ -17,11 +21,22 @@ const UserTable = ({
   const showEmptyState = !loading && users.length === 0;
   const disableSearch = loading || paginationLoading;
 
-  const sortedUsers = [...users].sort((a, b) => {
-    const nameA = `${a.first_name || ''} ${a.last_name || ''}`.trim() || a.username || a.email || '';
-    const nameB = `${b.first_name || ''} ${b.last_name || ''}`.trim() || b.username || b.email || '';
-    return nameA.localeCompare(nameB, 'pt-BR', { sensitivity: 'base' });
-  });
+  const sortedUsers = useMemo(
+    () => [...users].sort((a, b) => {
+      const nameA = `${a.first_name || ''} ${a.last_name || ''}`.trim() || a.username || a.email || '';
+      const nameB = `${b.first_name || ''} ${b.last_name || ''}`.trim() || b.username || b.email || '';
+      return nameA.localeCompare(nameB, 'pt-BR', { sensitivity: 'base' });
+    }),
+    [users]
+  );
+
+  const companyDataByUserId = useMemo(() => {
+    const map = new Map();
+    sortedUsers.forEach((user) => {
+      map.set(user.id, mapUserCompanyData(user, selectedPoleId));
+    });
+    return map;
+  }, [selectedPoleId, sortedUsers]);
 
   const getDisplayName = (user) => {
     const fullName = `${user.first_name || ''} ${user.last_name || ''}`.trim();
@@ -30,15 +45,48 @@ const UserTable = ({
     return user.email || '-';
   };
 
-  const getCompanyText = (user) => {
-    if (user.is_superuser) return '-';
-    const companyNames = (user.companies || []).map((company) => company?.name).filter(Boolean);
-    return companyNames.length ? companyNames.sort((a, b) => a.localeCompare(b, 'pt-BR')).join(', ') : '-';
+  const getCompanyAbbreviation = (name) => {
+    const normalized = (name || '').trim();
+    if (!normalized) return '';
+    const parts = normalized.split(' ').filter(Boolean);
+    if (parts.length <= 1) return normalized.slice(0, 4).toUpperCase();
+    return parts.slice(0, 3).map((part) => part[0].toUpperCase()).join('');
   };
 
-  const getPoleText = (user) => {
-    const poleNames = (user.polos || []).map((pole) => pole?.name).filter(Boolean);
-    return poleNames.length ? poleNames.sort((a, b) => a.localeCompare(b, 'pt-BR')).join(', ') : '-';
+  const renderPoleSummary = (user) => {
+    const poleNames = (user.polos || []).map((pole) => pole?.name).filter(Boolean).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    const companyAbbrs = (user.companies || [])
+      .map((company) => company?.name)
+      .filter(Boolean)
+      .map((name) => getCompanyAbbreviation(name))
+      .filter(Boolean);
+
+    if (!poleNames.length) {
+      return <span className="tag is-light">Sem polo</span>;
+    }
+
+    const [firstPole, ...otherPoles] = poleNames;
+    const tooltip = `Polo principal: ${firstPole}`;
+    const companyTooltip = companyAbbrs.join(', ');
+    const otherPolesTooltip = otherPoles.length
+      ? `Outros polos vinculados: ${otherPoles.join(', ')}`
+      : 'Sem outros polos vinculados';
+
+    return (
+      <div className="entity-chip-group" title={tooltip}>
+        {companyAbbrs.length > 0 && (
+          <span className="tag is-dark is-light entity-chip-abbr" title={`Empresa(s): ${companyTooltip}`}>
+            {companyAbbrs[0]}
+          </span>
+        )}
+        <span className="tag is-link is-light entity-chip-main" title={`Polo principal: ${firstPole}`}>{firstPole}</span>
+        {otherPoles.length > 0 && (
+          <span className="tag is-info is-light entity-chip-extra" title={otherPolesTooltip}>
+            +{otherPoles.length}
+          </span>
+        )}
+      </div>
+    );
   };
 
   const getRoleLabel = (user) => {
@@ -132,8 +180,10 @@ const UserTable = ({
                   <tr key={user.id}>
                     <td>{getDisplayName(user)}</td>
                     <td>{user.email || '-'}</td>
-                    <td>{getCompanyText(user)}</td>
-                    <td>{getPoleText(user)}</td>
+                    <td>
+                      <CompanyCell {...(companyDataByUserId.get(user.id) || {})} />
+                    </td>
+                    <td>{renderPoleSummary(user)}</td>
                     <td>
                       <span className={`tag ${user.is_active ? 'is-success' : 'is-danger'}`}>
                         <FontAwesomeIcon icon={user.is_active ? faCheck : faTimes} />

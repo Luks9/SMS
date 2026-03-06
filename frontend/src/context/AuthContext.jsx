@@ -11,6 +11,7 @@ import { useMsal } from '@azure/msal-react';
 import usePoleContext from './usePoles';
 
 const AuthContext = createContext();
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export const AuthProvider = ({ children }) => {
   const { instance, accounts } = useMsal();
@@ -127,19 +128,22 @@ export const AuthProvider = ({ children }) => {
   }, [clearSession, navigate]);
 
   const logoutWithMsal = useCallback(async () => {
+    // Evita auto-login imediato no retorno para /login durante fluxo de logout.
+    sessionStorage.setItem('msal_logout_in_progress', '1');
+    clearSession();
+
     try {
       const account = instance.getActiveAccount?.() || accounts?.[0] || null;
-      await instance.logoutPopup({
+      await instance.logoutRedirect({
         account,
-        postLogoutRedirectUri: window.location.origin,
-        mainWindowRedirectUri: window.location.origin,
+        postLogoutRedirectUri: `${window.location.origin}/login`,
       });
     } catch (error) {
       console.warn('Logout MSAL falhou:', error);
-    } finally {
-      logout();
+      // Fallback local quando logout federado falha.
+      navigate('/login');
     }
-  }, [accounts, instance, logout]);
+  }, [accounts, clearSession, instance, navigate]);
 
   const verifyAndRefreshToken = useCallback(async () => {
     if (refreshPromiseRef.current) {
@@ -197,7 +201,8 @@ export const AuthProvider = ({ children }) => {
 
         if (error.response?.status === 401 && originalRequest && !isAuthRequest) {
           if (originalRequest._retry) {
-            logout();
+            // Evita loop infinito de login/logout em 401 de regra de negócio.
+            // Se já houve retry com token renovado e ainda falhou, apenas propaga erro.
             return Promise.reject(error);
           }
 
@@ -252,11 +257,47 @@ export const AuthProvider = ({ children }) => {
   const login = useCallback(
     async (accessToken) => {
       try {
-        const response = await axios.post('/api/users/login/', null, {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        });
+        let response = null;
+        const maxAttempts = 2;
+        const loginEndpoints = ['/api/users/login/', '/api/users/login'];
+        let lastError = null;
+
+        for (const endpoint of loginEndpoints) {
+          for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+            try {
+              response = await axios.post(endpoint, null, {
+                headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                },
+              });
+              break;
+            } catch (err) {
+              lastError = err;
+              const status = err?.response?.status;
+              const isNotFound = status === 404;
+              const isTransient = !status || status >= 500 || status === 429;
+              const shouldRetrySameEndpoint = attempt < maxAttempts && isTransient;
+
+              if (shouldRetrySameEndpoint) {
+                await wait(400 * attempt);
+                continue;
+              }
+
+              // Se for 404, tenta variacao do endpoint (com/sem barra final).
+              if (isNotFound) {
+                break;
+              }
+
+              throw err;
+            }
+          }
+
+          if (response) break;
+        }
+
+        if (!response) {
+          throw lastError || new Error('Falha ao chamar endpoint de login.');
+        }
 
         const loggedUser = response.data.user;
         const tokenResponse = response.data.token;

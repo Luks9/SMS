@@ -1,4 +1,4 @@
-import React, { useCallback, useContext, useEffect, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import CompanySelectionModal from '../components/CompanySelectionModal';
 import Message from '../components/Message';
@@ -10,7 +10,7 @@ import { faMicrosoft } from '@fortawesome/free-brands-svg-icons';
 import { faSpinner } from '@fortawesome/free-solid-svg-icons';
 
 const Login = () => {
-  const { instance, inProgress } = useMsal();
+  const { instance, inProgress, accounts } = useMsal();
 
   const {
     login,
@@ -22,44 +22,108 @@ const Login = () => {
     user,
   } = useContext(AuthContext);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const backendLoginInFlightRef = useRef(false);
+  const interactiveLoginInFlightRef = useRef(false);
 
-  const completeLogin = useCallback(async (response) => {
-    if (!response?.account) {
-      throw new Error('Conta Microsoft nao retornada no login.');
-    }
+  const createPopupSignalWaiter = useCallback((timeoutMs = 15000) => {
+    let cleanup = () => {};
+    let settled = false;
 
-    instance.setActiveAccount(response.account);
+    const promise = new Promise((resolve, reject) => {
+      let timeoutId = null;
+      let channel = null;
 
-    let accessToken = response.accessToken;
-    if (!accessToken) {
+      cleanup = () => {
+        if (timeoutId) clearTimeout(timeoutId);
+        window.removeEventListener('storage', onStorage);
+        if (channel) {
+          try {
+            channel.close();
+          } catch (_error) {
+            // ignore
+          }
+        }
+      };
+
+      const done = () => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        resolve(true);
+      };
+
+      const onStorage = (event) => {
+        if (event.key === 'msal_popup_callback' && event.newValue) {
+          done();
+        }
+      };
+
+      window.addEventListener('storage', onStorage);
+
+      try {
+        channel = new BroadcastChannel('msal-auth');
+        channel.onmessage = (event) => {
+          if (event?.data?.type === 'popup_callback') {
+            done();
+          }
+        };
+      } catch (_error) {
+        // ignore
+      }
+
+      timeoutId = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        reject(new Error('Popup callback signal timeout'));
+      }, timeoutMs);
+    });
+
+    return {
+      promise,
+      cancel: () => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+      },
+    };
+  }, []);
+
+  const completeLoginWithAccount = useCallback(async (account) => {
+    if (!account || backendLoginInFlightRef.current) return;
+    backendLoginInFlightRef.current = true;
+
+    try {
+      instance.setActiveAccount(account);
       const tokenResponse = await instance.acquireTokenSilent({
         ...loginRequest,
-        account: response.account,
+        account,
       });
-      accessToken = tokenResponse?.accessToken;
-    }
 
-    if (!accessToken) {
-      throw new Error('Token de acesso nao retornado pela Microsoft.');
-    }
+      if (!tokenResponse?.accessToken) {
+        throw new Error('Token de acesso nao retornado pela Microsoft.');
+      }
 
-    await login(accessToken);
+      await login(tokenResponse.accessToken);
+    } finally {
+      backendLoginInFlightRef.current = false;
+    }
   }, [instance, login]);
 
+  const loginWithPopupRobust = useCallback(async () => {
+    // Mantem o fluxo simples e previsivel: popup unico com redirectUri padrao da app.
+    return instance.loginPopup(loginRequest);
+  }, [instance]);
+
   useEffect(() => {
-    instance
-      .handleRedirectPromise()
-      .then((response) => {
-        if (response) {
-          return completeLogin(response);
-        }
-        return null;
-      })
-      .catch((error) => {
-        console.error(error);
-        setMessage('Nao foi possivel concluir o retorno da autenticacao Microsoft. Tente novamente.');
-      });
-  }, [instance, completeLogin, setMessage]);
+    const logoutInProgress = sessionStorage.getItem('msal_logout_in_progress') === '1';
+    if (!logoutInProgress) return;
+
+    const activeAccount = instance.getActiveAccount?.() || accounts?.[0] || null;
+    if (!activeAccount) {
+      sessionStorage.removeItem('msal_logout_in_progress');
+    }
+  }, [accounts, instance]);
 
   const handleLogin = async () => {
     setMessage(null);
@@ -69,15 +133,61 @@ const Login = () => {
       return;
     }
 
+    if (interactiveLoginInFlightRef.current) {
+      return;
+    }
+
+    interactiveLoginInFlightRef.current = true;
     setIsAuthenticating(true);
 
     try {
-      setMessage('Redirecionando para autenticacao Microsoft...');
-      await instance.loginRedirect(loginRequest);
-    } catch (error) {
-      console.error(error);
-      setMessage('Nao foi possivel completar a autenticacao com a Microsoft. Feche janelas de login abertas e tente novamente.');
+      setMessage('Abrindo popup de autenticacao Microsoft...');
+      const popupPromise = loginWithPopupRobust();
+      // Evita rejection nao tratada caso fluxo conclua via sinal fallback.
+      popupPromise.catch(() => {});
+      const popupSignalWaiter = createPopupSignalWaiter();
+
+      const result = await Promise.race([
+        popupPromise.then((response) => ({ type: 'popup', response })),
+        popupSignalWaiter.promise
+          .then(() => ({ type: 'signal' }))
+          .catch(() => ({ type: 'signal-timeout' })),
+      ]);
+      popupSignalWaiter.cancel();
+
+      if (result.type === 'popup') {
+        const popupResponse = result.response;
+
+        if (popupResponse?.accessToken) {
+          await login(popupResponse.accessToken);
+          return;
+        }
+
+        const popupAccount = popupResponse?.account || instance.getActiveAccount?.() || null;
+        if (popupAccount) {
+          await completeLoginWithAccount(popupAccount);
+          return;
+        }
+
+        throw new Error('Conta nao retornada pelo popup.');
+      }
+
+      if (result.type === 'signal-timeout') {
+        throw new Error('Tempo esgotado aguardando callback do popup.');
+      }
+
+      // Fallback para navegadores onde loginPopup nao resolve por politica de janela.
+      const accountFromCache = instance.getActiveAccount?.() || accounts?.[0] || instance.getAllAccounts?.()?.[0] || null;
+      if (!accountFromCache) {
+        throw new Error('Conta nao retornada apos callback do popup.');
+      }
+
+      await completeLoginWithAccount(accountFromCache);
+    } catch (popupError) {
+      console.error(popupError);
+      setMessage('Nao foi possivel completar a autenticacao com a Microsoft via popup. Verifique bloqueio de popup no navegador e tente novamente.');
     } finally {
+      interactiveLoginInFlightRef.current = false;
       setIsAuthenticating(false);
     }
   };

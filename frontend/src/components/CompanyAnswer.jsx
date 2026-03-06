@@ -1,4 +1,4 @@
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useContext, useEffect, useRef } from 'react';
 import axios from 'axios';
 import Layout from '../components/Layout';
 import moment from 'moment';
@@ -8,6 +8,13 @@ import Message from './Message';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faFileDownload, faEdit, faTimes, faSpinner } from '@fortawesome/free-solid-svg-icons';
 import useFetchCompanyQuestions from '../hooks/useFetchCompanyQuestions';  // Importa o hook
+import {
+  RESUMABLE_THRESHOLD_BYTES,
+  createUploadControl,
+  pauseUpload,
+  resumeUpload,
+  uploadFileResumable,
+} from '../utils/resumableUpload';
 
 const CompanyAnswer = () => {
   const { id } = useParams();  // Pega o ID da avaliação da URL
@@ -21,6 +28,8 @@ const CompanyAnswer = () => {
   const [activeTab, setActiveTab] = useState('');  // Aba ativa
   const [isEditing, setIsEditing] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);  // Estado de carregamento
+  const [uploadStateByQuestion, setUploadStateByQuestion] = useState({});
+  const uploadControlsRef = useRef({});
 
   const ANSWER_CHOICES_MAP = {
     'NA': { label: 'Não Aplicável', color: 'is-light' },
@@ -67,36 +76,79 @@ const CompanyAnswer = () => {
     setIsSubmitting(true);  // Inicia o estado de carregamento
     try {
       const token = getToken();
-      const formData = new FormData();
   
       const selectedAnswer = selectedAnswers[questionId] !== undefined ? selectedAnswers[questionId] : questions.find(q => q.id === questionId).answer.answer_respondent;
       const selectedFile = selectedFiles[questionId];
       const company = localStorage.getItem('companyId');
-      formData.append('answer_respondent', selectedAnswer || '');
-      formData.append('date_respondent', moment().format('YYYY-MM-DD'));
-  
-      if (selectedFile) {
-        formData.append('attachment_respondent', selectedFile);
-      }
-  
-      if (!answerId) {
-        formData.append('question', questionId);
-        formData.append('evaluation', id);
-        formData.append('company', company);
-      }
-  
       const url = answerId ? `/api/answers/${answerId}/` : '/api/answers/';
       const method = answerId ? 'patch' : 'post';
-  
-      await axios({
-        method: method,
-        url: url,
-        data: formData,
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+
+      const basePayload = {
+        answer_respondent: selectedAnswer || '',
+        date_respondent: moment().format('YYYY-MM-DD'),
+      };
+      if (!answerId) {
+        basePayload.question = questionId;
+        basePayload.evaluation = id;
+        basePayload.company = company;
+      }
+
+      if (selectedFile && selectedFile.size >= RESUMABLE_THRESHOLD_BYTES) {
+        const uploadControl = createUploadControl();
+        uploadControlsRef.current[questionId] = uploadControl;
+        setUploadStateByQuestion((prev) => ({
+          ...prev,
+          [questionId]: { status: 'uploading', percent: 0, etaSeconds: null, paused: false },
+        }));
+
+        const uploadResult = await uploadFileResumable({
+          file: selectedFile,
+          token,
+          companyId: company,
+          fieldSlot: 'answer_respondent',
+          relativePath: `answers/${id}`,
+          uploadControl,
+          onProgress: ({ percent, etaSeconds }) => {
+            setUploadStateByQuestion((prev) => ({
+              ...prev,
+              [questionId]: { ...(prev[questionId] || {}), status: 'uploading', percent, etaSeconds, paused: uploadControl.paused },
+            }));
+          },
+        });
+
+        await axios({
+          method,
+          url,
+          data: {
+            ...basePayload,
+            attachment_respondent_file_id: uploadResult.file_id,
+          },
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+      } else {
+        const formData = new FormData();
+        formData.append('answer_respondent', basePayload.answer_respondent);
+        formData.append('date_respondent', basePayload.date_respondent);
+        if (!answerId) {
+          formData.append('question', questionId);
+          formData.append('evaluation', id);
+          formData.append('company', company);
+        }
+        if (selectedFile) {
+          formData.append('attachment_respondent', selectedFile);
+        }
+        await axios({
+          method,
+          url,
+          data: formData,
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+      }
   
       setMessage(answerId ? 'Resposta atualizada com sucesso!' : 'Resposta criada com sucesso!');
       setMessageType('success');
@@ -117,20 +169,36 @@ const CompanyAnswer = () => {
   
       // Fecha o modo de edição
       setIsEditing((prev) => ({ ...prev, [questionId]: false }));
+      setUploadStateByQuestion((prev) => ({ ...prev, [questionId]: { status: 'done', percent: 100, etaSeconds: 0, paused: false } }));
   
     } catch (error) {
       console.error('Erro ao salvar a resposta:', error);
       setMessage('Erro ao salvar a resposta. Por favor, tente novamente.');
       setMessageType('danger');
+      setUploadStateByQuestion((prev) => ({ ...prev, [questionId]: { status: 'error', percent: 0, etaSeconds: null, paused: false } }));
     } finally {
       setIsSubmitting(false);  // Finaliza o estado de carregamento
     }
   };
 
-  const handleDownload = async (answerId, fileName) => {
+  const handleDownload = async (answer) => {
+    const remoteFileId = answer?.attachment_respondent_file_id;
+    const remoteName = answer?.attachment_respondent_name;
+    if (remoteFileId) {
+      const token = getToken();
+      const downloadResponse = await axios.get(`/api/files/${remoteFileId}/download/?mode=json`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      window.open(downloadResponse.data.url, '_blank', 'noopener,noreferrer');
+      return;
+    }
+
     try {
       const token = getToken();
-      const response = await axios.get(`/api/download/attachment_respondent/${answerId}/`, {
+      const fileName = answer?.attachment_respondent?.split('/').pop() || remoteName || 'anexo';
+      const response = await axios.get(`/api/download/attachment_respondent/${answer.id}/`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -227,10 +295,10 @@ const CompanyAnswer = () => {
                           <p><strong>Nota da empresa: </strong> {answer.note || 'Não disponível'}</p>
                         </div>
                         <div className="column">
-                          {answer.attachment_respondent ? (
+                          {answer.attachment_respondent || answer.attachment_respondent_file_id ? (
                             <div>
                               <button
-                                onClick={() => handleDownload(answer.id, answer.attachment_respondent.split('/').pop())}
+                                onClick={() => handleDownload(answer)}
                               >
                                 <FontAwesomeIcon icon={faFileDownload} /> Baixar Anexo
                               </button>
@@ -294,17 +362,68 @@ const CompanyAnswer = () => {
                     )}
 
                     {(isEditing[question.id] || !isAnswerProvided) && (
-                      <button
-                        className="button is-primary mt-2"
-                        onClick={() => handleSubmit(question.id, answer.id)}
-                        disabled={isSubmitting}  // Desabilita o botão enquanto carrega
-                      >
-                        {isSubmitting ? (
-                          <FontAwesomeIcon icon={faSpinner} spin />
-                        ) : (
-                          'Salvar Resposta'
+                      <>
+                        {uploadStateByQuestion[question.id]?.status === 'uploading' && (
+                          <div className="mb-2">
+                            <progress
+                              className="progress is-info"
+                              value={uploadStateByQuestion[question.id]?.percent || 0}
+                              max="100"
+                            >
+                              {uploadStateByQuestion[question.id]?.percent || 0}%
+                            </progress>
+                            <small>
+                              {uploadStateByQuestion[question.id]?.percent || 0}% enviado
+                              {typeof uploadStateByQuestion[question.id]?.etaSeconds === 'number'
+                                ? ` - ETA ${uploadStateByQuestion[question.id].etaSeconds}s`
+                                : ''}
+                            </small>
+                            <div className="mt-2">
+                              {uploadStateByQuestion[question.id]?.paused ? (
+                                <button
+                                  type="button"
+                                  className="button is-small"
+                                  onClick={() => {
+                                    resumeUpload(uploadControlsRef.current[question.id]);
+                                    setUploadStateByQuestion((prev) => ({
+                                      ...prev,
+                                      [question.id]: { ...(prev[question.id] || {}), paused: false },
+                                    }));
+                                  }}
+                                >
+                                  Retomar
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  className="button is-small"
+                                  onClick={() => {
+                                    pauseUpload(uploadControlsRef.current[question.id]);
+                                    setUploadStateByQuestion((prev) => ({
+                                      ...prev,
+                                      [question.id]: { ...(prev[question.id] || {}), paused: true },
+                                    }));
+                                  }}
+                                >
+                                  Pausar
+                                </button>
+                              )}
+                            </div>
+                          </div>
                         )}
-                      </button>
+
+                        <button
+                          className="button is-primary mt-2"
+                          onClick={() => handleSubmit(question.id, answer.id)}
+                          disabled={isSubmitting}  // Desabilita o botão enquanto carrega
+                        >
+                          {isSubmitting ? (
+                            <FontAwesomeIcon icon={faSpinner} spin />
+                          ) : (
+                            'Salvar Resposta'
+                          )}
+                        </button>
+                      </>
                     )}
                   </div>
                 );
