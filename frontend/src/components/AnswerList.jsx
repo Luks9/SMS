@@ -125,7 +125,8 @@ const AnswerList = ({ questions, fetchEvaluationDetails }) => {
       
     } catch (error) {
       console.error('Erro ao salvar a resposta:', error);
-      setMessage('Erro ao salvar a resposta. Por favor, tente novamente.');
+      const apiDetail = error?.response?.data?.detail || error?.response?.data?.non_field_errors?.[0];
+      setMessage(apiDetail || 'Erro ao salvar a resposta. Por favor, tente novamente.');
       setMessageType('danger');
     } finally {
       setIsSubmitting(prev => ({ ...prev, [questionId]: false })); // Finaliza carregamento

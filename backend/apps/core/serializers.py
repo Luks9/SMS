@@ -240,6 +240,8 @@ class AnswerSerializer(serializers.ModelSerializer):
     def validate(self, data):
         # AvaliaÃ§Ã£o associada Ã  resposta
         evaluation = data.get('evaluation', self.instance.evaluation if self.instance else None)
+        question = data.get('question', self.instance.question if self.instance else None)
+        company = data.get('company', self.instance.company if self.instance else None)
         request = self.context.get('request')
 
         # Verifica se o usuÃ¡rio Ã© administrador
@@ -248,6 +250,20 @@ class AnswerSerializer(serializers.ModelSerializer):
 
         if evaluation and evaluation.valid_until and evaluation.valid_until < timezone.now().date():
             raise serializers.ValidationError("A data limite para responder esta avaliaÃ§Ã£o jÃ¡ expirou.")
+
+        if evaluation and question:
+            question_in_form = evaluation.form.categories.filter(
+                id=question.category_id
+            ).exists()
+            if not question_in_form:
+                raise serializers.ValidationError(
+                    "A pergunta informada nÃ£o pertence ao formulÃ¡rio desta avaliaÃ§Ã£o."
+                )
+
+        if evaluation and company and evaluation.company_id != company.id:
+            raise serializers.ValidationError(
+                "A empresa da resposta deve ser a mesma empresa da avaliaÃ§Ã£o."
+            )
 
         return data
 
@@ -285,7 +301,16 @@ class AnswerSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         respondent_file_id = validated_data.pop('attachment_respondent_file_id', None)
         evaluator_file_id = validated_data.pop('attachment_evaluator_file_id', None)
-        instance = super().create(validated_data)
+        evaluation = validated_data.get('evaluation')
+        if evaluation:
+            validated_data['company'] = evaluation.company
+
+        # Evita erro de unicidade em retries/clique duplo (evaluation + question).
+        instance, _created = Answer.objects.update_or_create(
+            evaluation=validated_data['evaluation'],
+            question=validated_data['question'],
+            defaults=validated_data,
+        )
 
         if respondent_file_id:
             file_obj = StoredFile.objects.filter(id=respondent_file_id, is_active=True).first()
