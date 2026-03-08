@@ -100,6 +100,182 @@ class UploadEndpointsTestCase(APITestCase):
         self.assertEqual(upload.bytes_sent, 10)
         self.assertEqual(upload.status, UploadSession.Status.COMPLETED)
 
+    def test_upload_chunk_accepts_octet_stream_body(self):
+        upload = UploadSession.objects.create(
+            user=self.user,
+            storage_provider=UploadSession.StorageProvider.LOCAL,
+            status=UploadSession.Status.IN_PROGRESS,
+            file_name="big.zip",
+            original_file_name="big.zip",
+            file_size=10,
+            content_type="application/zip",
+            chunk_size=5,
+            upload_url="local://upload",
+            drive_id="local",
+            bytes_sent=0,
+        )
+
+        response = self.client.generic(
+            "PUT",
+            f"/api/uploads/{upload.id}/chunk/",
+            data=b"0123456789",
+            content_type="application/octet-stream",
+            HTTP_X_CHUNK_START="0",
+            HTTP_X_CHUNK_END="9",
+            HTTP_X_CHUNK_TOTAL="10",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        upload.refresh_from_db()
+        self.assertEqual(upload.bytes_sent, 10)
+        self.assertEqual(upload.status, UploadSession.Status.COMPLETED)
+
+    @patch("apps.core.upload_views.register_stored_file_from_upload")
+    def test_upload_complete_uses_answer_company_when_company_id_missing(self, mocked_register):
+        upload = UploadSession.objects.create(
+            user=self.user,
+            status=UploadSession.Status.COMPLETED,
+            file_name="evidence.pdf",
+            original_file_name="evidence.pdf",
+            file_size=10,
+            content_type="application/pdf",
+            chunk_size=5,
+            upload_url="https://upload.example",
+            drive_id="drive",
+            bytes_sent=10,
+            onedrive_item_id="item-123",
+        )
+
+        captured = {}
+
+        def fake_register(upload_obj, company=None, field_slot=StoredFile.FieldSlot.OTHER):
+            captured["company_id"] = company.id if company else None
+            return StoredFile.objects.create(
+                upload_session=upload_obj,
+                uploaded_by=self.user,
+                company=company,
+                provider=StoredFile.Provider.LOCAL,
+                provider_item_id="attachments/resumable/test-file.pdf",
+                drive_id="local",
+                file_name="evidence.pdf",
+                original_file_name="evidence.pdf",
+                file_size=10,
+                content_type="application/pdf",
+                field_slot=field_slot,
+            )
+
+        mocked_register.side_effect = fake_register
+
+        response = self.client.post(
+            f"/api/uploads/{upload.id}/complete/",
+            {
+                "answer_id": self.answer.id,
+                "field_slot": StoredFile.FieldSlot.ANSWER_RESPONDENT,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(captured["company_id"], self.company.id)
+        self.answer.refresh_from_db()
+        self.assertIsNotNone(self.answer.attachment_respondent_file_id)
+
+    @patch("apps.core.upload_views.register_stored_file_from_upload")
+    def test_upload_complete_ignores_stale_company_id_if_answer_is_provided(self, mocked_register):
+        other_company = Company.objects.create(name="Other Co", cnpj="11.111.111/0001-11", is_active=True)
+        upload = UploadSession.objects.create(
+            user=self.user,
+            status=UploadSession.Status.COMPLETED,
+            file_name="evidence.pdf",
+            original_file_name="evidence.pdf",
+            file_size=10,
+            content_type="application/pdf",
+            chunk_size=5,
+            upload_url="https://upload.example",
+            drive_id="drive",
+            bytes_sent=10,
+            onedrive_item_id="item-123",
+        )
+
+        def fake_register(upload_obj, company=None, field_slot=StoredFile.FieldSlot.OTHER):
+            return StoredFile.objects.create(
+                upload_session=upload_obj,
+                uploaded_by=self.user,
+                company=company,
+                provider=StoredFile.Provider.LOCAL,
+                provider_item_id="attachments/resumable/test-file.pdf",
+                drive_id="local",
+                file_name="evidence.pdf",
+                original_file_name="evidence.pdf",
+                file_size=10,
+                content_type="application/pdf",
+                field_slot=field_slot,
+            )
+
+        mocked_register.side_effect = fake_register
+
+        response = self.client.post(
+            f"/api/uploads/{upload.id}/complete/",
+            {
+                "company_id": other_company.id,
+                "answer_id": self.answer.id,
+                "field_slot": StoredFile.FieldSlot.ANSWER_RESPONDENT,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.answer.refresh_from_db()
+        self.assertIsNotNone(self.answer.attachment_respondent_file_id)
+
+    @patch("apps.core.upload_views.register_stored_file_from_upload")
+    def test_upload_complete_uses_evaluation_company_when_evaluation_id_is_sent(self, mocked_register):
+        upload = UploadSession.objects.create(
+            user=self.user,
+            status=UploadSession.Status.COMPLETED,
+            file_name="evidence.pdf",
+            original_file_name="evidence.pdf",
+            file_size=10,
+            content_type="application/pdf",
+            chunk_size=5,
+            upload_url="https://upload.example",
+            drive_id="drive",
+            bytes_sent=10,
+            onedrive_item_id="item-123",
+        )
+
+        captured = {}
+
+        def fake_register(upload_obj, company=None, field_slot=StoredFile.FieldSlot.OTHER):
+            captured["company_id"] = company.id if company else None
+            return StoredFile.objects.create(
+                upload_session=upload_obj,
+                uploaded_by=self.user,
+                company=company,
+                provider=StoredFile.Provider.LOCAL,
+                provider_item_id="attachments/resumable/test-file.pdf",
+                drive_id="local",
+                file_name="evidence.pdf",
+                original_file_name="evidence.pdf",
+                file_size=10,
+                content_type="application/pdf",
+                field_slot=field_slot,
+            )
+
+        mocked_register.side_effect = fake_register
+
+        response = self.client.post(
+            f"/api/uploads/{upload.id}/complete/",
+            {
+                "evaluation_id": self.evaluation.id,
+                "field_slot": StoredFile.FieldSlot.ANSWER_RESPONDENT,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(captured["company_id"], self.company.id)
+
     @patch("apps.core.upload_views.register_stored_file_from_upload")
     def test_upload_complete_links_answer_file(self, mocked_register):
         upload = UploadSession.objects.create(

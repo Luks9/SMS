@@ -770,7 +770,21 @@ class AnswerViewSet(viewsets.ModelViewSet):
     def _strip_large_files_from_data(self, request):
         threshold_mb = getattr(settings, "LEGACY_MULTIPART_THRESHOLD_MB", 15)
         threshold = threshold_mb * 1024 * 1024
-        data = request.data.copy()
+
+        # request.data.copy() faz deepcopy e pode falhar com TemporaryUploadedFile.
+        # Aqui criamos uma copia rasa e mutavel sem serializar arquivos.
+        try:
+            data = request.data.copy()
+        except Exception:
+            if hasattr(request.data, "lists"):
+                data = request.data.__class__("", mutable=True)
+                for key, values in request.data.lists():
+                    data.setlist(key, list(values))
+            else:
+                data = {}
+                for key in request.data.keys():
+                    data[key] = request.data.get(key)
+
         for field_name in ("attachment_respondent", "attachment_evaluator"):
             incoming_file = request.FILES.get(field_name)
             if incoming_file and incoming_file.size >= threshold:

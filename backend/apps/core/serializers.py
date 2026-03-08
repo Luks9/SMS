@@ -4,6 +4,7 @@ from django.utils import timezone
 from django.db.utils import DatabaseError
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
+from apps.users.utils.permissions import user_has_access_to_company
 from .models import Company, CategoryQuestion, Question, Form, Answer, Subcategory, Evaluation, ActionPlan, Polo, StoredFile
 from .utils import format_cnpj_display
 
@@ -236,6 +237,10 @@ class AnswerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Answer
         fields = '__all__'
+        validators = []
+        extra_kwargs = {
+            'company': {'required': False},
+        }
     
     def validate(self, data):
         # AvaliaÃ§Ã£o associada Ã  resposta
@@ -247,6 +252,11 @@ class AnswerSerializer(serializers.ModelSerializer):
         # Verifica se o usuÃ¡rio Ã© administrador
         if request and request.user and request.user.is_superuser:
             return data  # Permite salvar sem validar a data
+
+        if request and request.user and evaluation:
+            access_check = user_has_access_to_company(request.user, company=evaluation.company)
+            if access_check is not True:
+                raise serializers.ValidationError("VocÃª nÃ£o tem permissÃ£o para responder esta avaliaÃ§Ã£o.")
 
         if evaluation and evaluation.valid_until and evaluation.valid_until < timezone.now().date():
             raise serializers.ValidationError("A data limite para responder esta avaliaÃ§Ã£o jÃ¡ expirou.")
@@ -316,10 +326,16 @@ class AnswerSerializer(serializers.ModelSerializer):
             file_obj = StoredFile.objects.filter(id=respondent_file_id, is_active=True).first()
             if file_obj:
                 instance.attachment_respondent_file = file_obj
+                if instance.company_id and not file_obj.company_id:
+                    file_obj.company = instance.company
+                    file_obj.save(update_fields=['company', 'updated_at'])
         if evaluator_file_id:
             file_obj = StoredFile.objects.filter(id=evaluator_file_id, is_active=True).first()
             if file_obj:
                 instance.attachment_evaluator_file = file_obj
+                if instance.company_id and not file_obj.company_id:
+                    file_obj.company = instance.company
+                    file_obj.save(update_fields=['company', 'updated_at'])
         if respondent_file_id or evaluator_file_id:
             instance.save(update_fields=['attachment_respondent_file', 'attachment_evaluator_file'])
         return instance
@@ -333,6 +349,9 @@ class AnswerSerializer(serializers.ModelSerializer):
             if respondent_file_id:
                 file_obj = StoredFile.objects.filter(id=respondent_file_id, is_active=True).first()
                 instance.attachment_respondent_file = file_obj
+                if file_obj and instance.company_id and not file_obj.company_id:
+                    file_obj.company = instance.company
+                    file_obj.save(update_fields=['company', 'updated_at'])
             else:
                 instance.attachment_respondent_file = None
 
@@ -340,6 +359,9 @@ class AnswerSerializer(serializers.ModelSerializer):
             if evaluator_file_id:
                 file_obj = StoredFile.objects.filter(id=evaluator_file_id, is_active=True).first()
                 instance.attachment_evaluator_file = file_obj
+                if file_obj and instance.company_id and not file_obj.company_id:
+                    file_obj.company = instance.company
+                    file_obj.save(update_fields=['company', 'updated_at'])
             else:
                 instance.attachment_evaluator_file = None
 
@@ -538,6 +560,9 @@ class ActionPlanSerializer(serializers.ModelSerializer):
             if attachment_file_id:
                 file_obj = StoredFile.objects.filter(id=attachment_file_id, is_active=True).first()
                 instance.attachment_file = file_obj
+                if file_obj and instance.company_id and not file_obj.company_id:
+                    file_obj.company = instance.company
+                    file_obj.save(update_fields=['company', 'updated_at'])
             else:
                 instance.attachment_file = None
             instance.save(update_fields=['attachment_file'])

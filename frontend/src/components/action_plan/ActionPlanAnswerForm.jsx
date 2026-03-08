@@ -16,6 +16,8 @@ import {
   uploadFileResumable,
 } from '../../utils/resumableUpload';
 
+const LEGACY_MULTIPART_MAX_BYTES = 50 * 1024 * 1024;
+
 moment.locale('pt-br');
 
 const ActionPlanAnswerForm = () => {
@@ -50,39 +52,7 @@ const ActionPlanAnswerForm = () => {
     const token = getToken();
 
     try {
-      if (attachment && attachment.size >= RESUMABLE_THRESHOLD_BYTES) {
-        const control = createUploadControl();
-        setUploadControl(control);
-        setUploadPaused(false);
-        setUploadProgress({ percent: 0, etaSeconds: null });
-
-        const uploadResult = await uploadFileResumable({
-          file: attachment,
-          token,
-          companyId: actionPlan?.company,
-          actionPlanId,
-          fieldSlot: 'action_plan',
-          relativePath: `action-plans/${actionPlanId}`,
-          uploadControl: control,
-          onProgress: ({ percent, etaSeconds }) => {
-            setUploadProgress({ percent, etaSeconds });
-          },
-        });
-
-        await axios.patch(
-          `/api/action-plans/${actionPlanId}/`,
-          {
-            response_company: responseCompany,
-            response_choice: responseChoice || '',
-            attachment_file_id: uploadResult.file_id,
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-      } else {
+      const submitViaMultipart = async () => {
         const formData = new FormData();
         formData.append('response_company', responseCompany);
         formData.append('response_choice', responseChoice || '');
@@ -96,6 +66,50 @@ const ActionPlanAnswerForm = () => {
             'Content-Type': 'multipart/form-data',
           },
         });
+      };
+
+      if (attachment && attachment.size >= RESUMABLE_THRESHOLD_BYTES) {
+        const control = createUploadControl();
+        setUploadControl(control);
+        setUploadPaused(false);
+        setUploadProgress({ percent: 0, etaSeconds: null });
+
+        try {
+          const uploadResult = await uploadFileResumable({
+            file: attachment,
+            token,
+            actionPlanId,
+            fieldSlot: 'action_plan',
+            relativePath: `action-plans/${actionPlanId}`,
+            uploadControl: control,
+            onProgress: ({ percent, etaSeconds }) => {
+              setUploadProgress({ percent, etaSeconds });
+            },
+          });
+
+          await axios.patch(
+            `/api/action-plans/${actionPlanId}/`,
+            {
+              response_company: responseCompany,
+              response_choice: responseChoice || '',
+              attachment_file_id: uploadResult.file_id,
+            },
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+        } catch (uploadError) {
+          if (attachment.size > LEGACY_MULTIPART_MAX_BYTES) {
+            throw uploadError;
+          }
+          await submitViaMultipart();
+          setMessage('Upload finalizado com fallback automatico.');
+          setMessageType('warning');
+        }
+      } else {
+        await submitViaMultipart();
       }
 
       setMessage('Resposta e anexo enviados com sucesso!');

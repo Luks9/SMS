@@ -16,6 +16,8 @@ import {
   uploadFileResumable,
 } from '../utils/resumableUpload';
 
+const LEGACY_MULTIPART_MAX_BYTES = 50 * 1024 * 1024;
+
 const CompanyAnswer = () => {
   const { id } = useParams();  // Pega o ID da avaliação da URL
   const { questions, loading, error, fetchQuestions } = useFetchCompanyQuestions(id); // Usa o hook para buscar perguntas
@@ -73,13 +75,21 @@ const CompanyAnswer = () => {
   };
 
   const handleSubmit = async (questionId, answerId = null) => {
+    const selectedAnswer = selectedAnswers[questionId] !== undefined
+      ? selectedAnswers[questionId]
+      : questions.find(q => q.id === questionId)?.answer?.answer_respondent;
+
+    if (!selectedAnswer) {
+      setMessage('Selecione uma resposta antes de enviar o anexo.');
+      setMessageType('danger');
+      return;
+    }
+
     setIsSubmitting(true);  // Inicia o estado de carregamento
     try {
       const token = getToken();
   
-      const selectedAnswer = selectedAnswers[questionId] !== undefined ? selectedAnswers[questionId] : questions.find(q => q.id === questionId).answer.answer_respondent;
       const selectedFile = selectedFiles[questionId];
-      const company = localStorage.getItem('companyId');
       const url = answerId ? `/api/answers/${answerId}/` : '/api/answers/';
       const method = answerId ? 'patch' : 'post';
 
@@ -90,51 +100,15 @@ const CompanyAnswer = () => {
       if (!answerId) {
         basePayload.question = questionId;
         basePayload.evaluation = id;
-        basePayload.company = company;
       }
 
-      if (selectedFile && selectedFile.size >= RESUMABLE_THRESHOLD_BYTES) {
-        const uploadControl = createUploadControl();
-        uploadControlsRef.current[questionId] = uploadControl;
-        setUploadStateByQuestion((prev) => ({
-          ...prev,
-          [questionId]: { status: 'uploading', percent: 0, etaSeconds: null, paused: false },
-        }));
-
-        const uploadResult = await uploadFileResumable({
-          file: selectedFile,
-          token,
-          companyId: company,
-          fieldSlot: 'answer_respondent',
-          relativePath: `answers/${id}`,
-          uploadControl,
-          onProgress: ({ percent, etaSeconds }) => {
-            setUploadStateByQuestion((prev) => ({
-              ...prev,
-              [questionId]: { ...(prev[questionId] || {}), status: 'uploading', percent, etaSeconds, paused: uploadControl.paused },
-            }));
-          },
-        });
-
-        await axios({
-          method,
-          url,
-          data: {
-            ...basePayload,
-            attachment_respondent_file_id: uploadResult.file_id,
-          },
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-      } else {
+      const sendViaMultipart = async () => {
         const formData = new FormData();
         formData.append('answer_respondent', basePayload.answer_respondent);
         formData.append('date_respondent', basePayload.date_respondent);
         if (!answerId) {
           formData.append('question', questionId);
           formData.append('evaluation', id);
-          formData.append('company', company);
         }
         if (selectedFile) {
           formData.append('attachment_respondent', selectedFile);
@@ -148,6 +122,59 @@ const CompanyAnswer = () => {
             'Content-Type': 'multipart/form-data',
           },
         });
+      };
+
+      if (selectedFile && selectedFile.size >= RESUMABLE_THRESHOLD_BYTES) {
+        const uploadControl = createUploadControl();
+        uploadControlsRef.current[questionId] = uploadControl;
+        setUploadStateByQuestion((prev) => ({
+          ...prev,
+          [questionId]: { status: 'uploading', percent: 0, etaSeconds: null, paused: false },
+        }));
+
+        let usedFallback = false;
+        try {
+          const uploadResult = await uploadFileResumable({
+            file: selectedFile,
+            token,
+            evaluationId: id,
+            fieldSlot: 'answer_respondent',
+            answerId: answerId || null,
+            relativePath: `answers/${id}`,
+            uploadControl,
+            onProgress: ({ percent, etaSeconds }) => {
+              setUploadStateByQuestion((prev) => ({
+                ...prev,
+                [questionId]: { ...(prev[questionId] || {}), status: 'uploading', percent, etaSeconds, paused: uploadControl.paused },
+              }));
+            },
+          });
+
+          await axios({
+            method,
+            url,
+            data: {
+              ...basePayload,
+              attachment_respondent_file_id: uploadResult.file_id,
+            },
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+        } catch (uploadError) {
+          const canFallbackToLegacy = selectedFile.size <= LEGACY_MULTIPART_MAX_BYTES;
+          if (!canFallbackToLegacy) {
+            throw uploadError;
+          }
+          await sendViaMultipart();
+          usedFallback = true;
+        }
+        if (usedFallback) {
+          setMessage('Upload finalizado com fallback automatico.');
+          setMessageType('warning');
+        }
+      } else {
+        await sendViaMultipart();
       }
   
       setMessage(answerId ? 'Resposta atualizada com sucesso!' : 'Resposta criada com sucesso!');
@@ -173,7 +200,10 @@ const CompanyAnswer = () => {
   
     } catch (error) {
       console.error('Erro ao salvar a resposta:', error);
-      const apiDetail = error?.response?.data?.detail || error?.response?.data?.non_field_errors?.[0];
+      const apiDetail =
+        error?.response?.data?.detail ||
+        error?.response?.data?.non_field_errors?.[0] ||
+        error?.response?.data?.answer_respondent?.[0];
       setMessage(apiDetail || 'Erro ao salvar a resposta. Por favor, tente novamente.');
       setMessageType('danger');
       setUploadStateByQuestion((prev) => ({ ...prev, [questionId]: { status: 'error', percent: 0, etaSeconds: null, paused: false } }));

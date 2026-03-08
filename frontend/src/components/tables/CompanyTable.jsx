@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEdit, faCheck, faTimes, faTrash, faSpinner } from '@fortawesome/free-solid-svg-icons';
 import TableSearchInput from '../inputs/TableSearchInput';
+import '../../styles/CompanyTable.css';
 
 const CompanyTable = ({
   companies,
@@ -17,7 +18,13 @@ const CompanyTable = ({
   const [companyToDelete, setCompanyToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const searchIsLoading = paginationLoading;
-  const isEmpty = companies.length === 0;
+
+  const sortedCompanies = useMemo(
+    () => [...companies].sort((a, b) => (a?.name || '').localeCompare(b?.name || '', 'pt-BR', { sensitivity: 'base' })),
+    [companies]
+  );
+
+  const isEmpty = sortedCompanies.length === 0;
 
   if (loading) {
     return (
@@ -56,24 +63,11 @@ const CompanyTable = ({
   };
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div className="company-table-wrapper">
       {paginationLoading && (
-        <div
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(255, 255, 255, 0.8)',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            zIndex: 10,
-          }}
-        >
+        <div className="company-table-overlay">
           <FontAwesomeIcon icon={faSpinner} spin size="2x" />
-          <span style={{ marginLeft: '10px' }}>Carregando...</span>
+          <span className="company-table-overlay-label">Carregando...</span>
         </div>
       )}
 
@@ -84,55 +78,58 @@ const CompanyTable = ({
         </div>
       )}
 
-      <div
-        className="mb-4"
-        style={{
-          display: 'flex',
-          justifyContent: 'flex-end',
-          maxWidth: '360px',
-          marginLeft: 'auto',
-        }}
-      >
-        <TableSearchInput
-          value={searchValue}
-          onSearch={onSearch}
-          placeholder={searchPlaceholder}
-          isLoading={searchIsLoading}
-        />
+      <div className="company-table-toolbar">
+        <div className="company-table-search">
+          <TableSearchInput
+            value={searchValue}
+            onSearch={onSearch}
+            placeholder={searchPlaceholder}
+            isLoading={searchIsLoading}
+          />
+        </div>
       </div>
 
       {isEmpty ? (
-        paginationLoading ? null : <p>Nenhuma empresa encontrada.</p>
+        paginationLoading ? null : <p className="has-text-grey">Nenhuma empresa encontrada.</p>
       ) : (
         <div className="table-container">
-          <table className="table is-fullwidth is-striped is-hoverable">
+          <table className="table is-fullwidth is-striped is-hoverable company-table">
             <thead>
               <tr>
                 <th>Nome</th>
                 <th>CNPJ</th>
-                <th>Domínio</th>
-                <th>Status</th>
-                <th colSpan={2}>Ações</th>
+                <th>Dominio</th>
+                <th className="has-text-centered">Status</th>
+                <th className="has-text-centered">Acoes</th>
               </tr>
             </thead>
             <tbody>
-              {companies.map((company) => (
+              {sortedCompanies.map((company) => (
                 <tr key={company.id}>
-                  <td>{company.name}</td>
-                  <td>{company.cnpj}</td>
-                  <td>{company.dominio || '-'}</td>
+                  <td className="company-cell-name">{company.name}</td>
+                  <td className="company-cell-cnpj">{company.cnpj || '-'}</td>
                   <td>
-                    <span className={`tag ${company.is_active ? 'is-success' : 'is-danger'}`}>
+                    {company.dominio ? (
+                      <span className="tag is-link is-light company-domain-badge" title={company.dominio}>
+                        {company.dominio}
+                      </span>
+                    ) : (
+                      <span className="tag is-light company-domain-badge">-</span>
+                    )}
+                  </td>
+                  <td className="has-text-centered company-cell-status">
+                    <span className={`tag company-status-badge ${company.is_active ? 'is-success' : 'is-danger'}`}>
                       <FontAwesomeIcon icon={company.is_active ? faCheck : faTimes} />
                       &nbsp;{company.is_active ? 'Ativo' : 'Inativo'}
                     </span>
                   </td>
-                  <td>
-                    <div className="buttons">
+                  <td className="has-text-centered company-cell-actions">
+                    <div className="company-actions-inline">
                       <button
                         className="button is-small is-info"
                         onClick={() => onEdit(company)}
                         disabled={paginationLoading}
+                        title="Editar empresa"
                       >
                         <FontAwesomeIcon icon={faEdit} />
                       </button>

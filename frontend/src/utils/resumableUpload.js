@@ -27,6 +27,7 @@ export const uploadFileResumable = async ({
   token,
   relativePath = '',
   companyId = null,
+  evaluationId = null,
   fieldSlot = 'other',
   answerId = null,
   actionPlanId = null,
@@ -67,24 +68,29 @@ export const uploadFileResumable = async ({
 
     const chunk = file.slice(bytesSent, bytesSent + chunkSize);
     const chunkEnd = bytesSent + chunk.size - 1;
-    const formData = new FormData();
-    formData.append('chunk', chunk);
-    formData.append('start', String(bytesSent));
-    formData.append('end', String(chunkEnd));
-    formData.append('total', String(file.size));
-
     let attempt = 0;
     // Retry exponencial por chunk para suportar redes instaveis.
     while (true) {
       try {
-        const chunkResponse = await axios.put(`/api/uploads/${uploadId}/chunk/`, formData, {
-          headers: { Authorization: `Bearer ${token}` },
+        const chunkResponse = await axios.put(`/api/uploads/${uploadId}/chunk/`, chunk, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/octet-stream',
+            'X-Chunk-Start': String(bytesSent),
+            'X-Chunk-End': String(chunkEnd),
+            'X-Chunk-Total': String(file.size),
+          },
         });
         bytesSent = chunkResponse.data.bytes_sent;
         break;
       } catch (error) {
         attempt += 1;
-        if (attempt > maxRetries) throw error;
+        if (attempt > maxRetries) {
+          const apiDetail = error?.response?.data?.detail || error?.message || 'Falha no envio do chunk.';
+          const wrapped = new Error(apiDetail);
+          wrapped.cause = error;
+          throw wrapped;
+        }
         await sleep(Math.min(8000, 400 * 2 ** (attempt - 1)));
       }
     }
@@ -96,18 +102,17 @@ export const uploadFileResumable = async ({
     onProgress({ percent, bytesSent, totalBytes: file.size, etaSeconds });
   }
 
-  const completeResponse = await axios.post(
-    `/api/uploads/${uploadId}/complete/`,
-    {
-      company_id: companyId,
-      answer_id: answerId,
-      action_plan_id: actionPlanId,
-      field_slot: fieldSlot,
-    },
-    {
-      headers: { Authorization: `Bearer ${token}` },
-    }
-  );
+  const completePayload = {
+    field_slot: fieldSlot,
+  };
+  if (companyId) completePayload.company_id = companyId;
+  if (answerId) completePayload.answer_id = answerId;
+  if (actionPlanId) completePayload.action_plan_id = actionPlanId;
+  if (evaluationId) completePayload.evaluation_id = evaluationId;
+
+  const completeResponse = await axios.post(`/api/uploads/${uploadId}/complete/`, completePayload, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
 
   return completeResponse.data;
 };

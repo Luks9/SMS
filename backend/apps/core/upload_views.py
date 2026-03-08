@@ -9,14 +9,14 @@ from django.http import HttpResponseRedirect, StreamingHttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import status
-from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
+from rest_framework.parsers import BaseParser, FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.users.utils.permissions import user_has_access_to_company
 
-from .models import ActionPlan, Answer, Company, StoredFile, UploadSession
+from .models import ActionPlan, Answer, Company, Evaluation, StoredFile, UploadSession
 from .storage.onedrive.client import OneDriveClient, OneDriveError
 from .upload_service import (
     append_local_chunk,
@@ -37,6 +37,13 @@ def _as_int(value, default=0):
         return int(value)
     except (TypeError, ValueError):
         return default
+
+
+class RawChunkParser(BaseParser):
+    media_type = "application/octet-stream"
+
+    def parse(self, stream, media_type=None, parser_context=None):
+        return {"chunk": stream.read()}
 
 
 class UploadInitView(APIView):
@@ -91,7 +98,7 @@ class UploadInitView(APIView):
 
 class UploadChunkView(APIView):
     permission_classes = [IsAuthenticated]
-    parser_classes = [MultiPartParser, FormParser]
+    parser_classes = [MultiPartParser, FormParser, RawChunkParser]
 
     def put(self, request, upload_id):
         upload = ensure_upload_for_user(upload_id, request.user)
@@ -103,15 +110,28 @@ class UploadChunkView(APIView):
         start = _as_int(request.headers.get("X-Chunk-Start") or request.data.get("start"))
         end = _as_int(request.headers.get("X-Chunk-End") or request.data.get("end"))
         total = _as_int(request.headers.get("X-Chunk-Total") or request.data.get("total") or upload.file_size)
-        chunk_file = request.FILES.get("chunk")
-        if chunk_file is None:
-            return Response({"detail": "Campo chunk obrigatorio."}, status=status.HTTP_400_BAD_REQUEST)
+        chunk_file = request.FILES.get("chunk") or request.data.get("chunk")
+        chunk_bytes = b""
+        if chunk_file is not None and hasattr(chunk_file, "read"):
+            chunk_bytes = chunk_file.read()
+        elif isinstance(chunk_file, (bytes, bytearray)):
+            chunk_bytes = bytes(chunk_file)
+        elif request.body:
+            # Compatibilidade para clientes que enviam chunk em octet-stream puro.
+            chunk_bytes = request.body
 
-        chunk_bytes = chunk_file.read()
+        if not chunk_bytes:
+            upload.last_error = "Chunk ausente na requisicao."
+            upload.save(update_fields=["last_error", "updated_at"])
+            return Response({"detail": "Campo chunk obrigatorio."}, status=status.HTTP_400_BAD_REQUEST)
         expected_end = start + len(chunk_bytes) - 1
         if end != expected_end:
+            upload.last_error = f"Range invalido. start={start} end={end} expected_end={expected_end}"
+            upload.save(update_fields=["last_error", "updated_at"])
             return Response({"detail": "Range invalido para chunk."}, status=status.HTTP_400_BAD_REQUEST)
         if total != upload.file_size:
+            upload.last_error = f"Total divergente. total={total} expected={upload.file_size}"
+            upload.save(update_fields=["last_error", "updated_at"])
             return Response({"detail": "Total de bytes difere do upload iniciado."}, status=status.HTTP_400_BAD_REQUEST)
 
         if start < upload.bytes_sent:
@@ -120,8 +140,12 @@ class UploadChunkView(APIView):
                     {"status": "duplicate", "bytes_sent": upload.bytes_sent},
                     status=status.HTTP_200_OK,
                 )
+            upload.last_error = f"Chunk sobreposto invalido. start={start} bytes_sent={upload.bytes_sent}"
+            upload.save(update_fields=["last_error", "updated_at"])
             return Response({"detail": "Chunk sobreposto invalido."}, status=status.HTTP_409_CONFLICT)
         if start > upload.bytes_sent:
+            upload.last_error = f"Chunk fora de ordem. start={start} expected_start={upload.bytes_sent}"
+            upload.save(update_fields=["last_error", "updated_at"])
             return Response(
                 {"detail": "Chunk fora de ordem.", "expected_start": upload.bytes_sent},
                 status=status.HTTP_409_CONFLICT,
@@ -208,11 +232,45 @@ class UploadCompleteView(APIView):
         company_id = request.data.get("company_id")
         answer_id = request.data.get("answer_id")
         action_plan_id = request.data.get("action_plan_id")
+        evaluation_id = request.data.get("evaluation_id")
         field_slot = request.data.get("field_slot", StoredFile.FieldSlot.OTHER)
 
+        answer = None
+        action_plan = None
         company = None
-        if company_id:
+
+        # Fonte canonica de empresa: objeto vinculado (resposta/plano), nao contexto de UI.
+        if answer_id:
+            answer = get_object_or_404(Answer.objects.select_related("evaluation__company"), id=answer_id)
+            company = answer.evaluation.company
+            access_check = user_has_access_to_company(request.user, company=company)
+            if access_check is not True:
+                return access_check
+
+        if action_plan_id:
+            action_plan = get_object_or_404(ActionPlan.objects.select_related("company"), id=action_plan_id)
+            if company and company.id != action_plan.company_id:
+                return Response(
+                    {"detail": "A resposta e o plano de acao pertencem a empresas diferentes."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            company = action_plan.company
+            access_check = user_has_access_to_company(request.user, company=company)
+            if access_check is not True:
+                return access_check
+
+        if company is None and evaluation_id:
+            evaluation = get_object_or_404(Evaluation.objects.select_related("company"), id=evaluation_id)
+            company = evaluation.company
+            access_check = user_has_access_to_company(request.user, company=company)
+            if access_check is not True:
+                return access_check
+
+        # Compatibilidade com clientes antigos.
+        if company is None and company_id:
             company = Company.objects.filter(id=company_id).first()
+            if not company:
+                return Response({"detail": "Empresa informada no upload nao existe."}, status=status.HTTP_400_BAD_REQUEST)
             access_check = user_has_access_to_company(request.user, company=company)
             if access_check is not True:
                 return access_check
@@ -232,16 +290,14 @@ class UploadCompleteView(APIView):
             stored.delete()
             return Response({"detail": "Checksum divergente."}, status=status.HTTP_400_BAD_REQUEST)
 
-        if answer_id:
-            answer = get_object_or_404(Answer, id=answer_id)
+        if answer:
             if field_slot == StoredFile.FieldSlot.ANSWER_EVALUATOR:
                 answer.attachment_evaluator_file = stored
                 answer.save(update_fields=["attachment_evaluator_file"])
             else:
                 answer.attachment_respondent_file = stored
                 answer.save(update_fields=["attachment_respondent_file"])
-        if action_plan_id:
-            action_plan = get_object_or_404(ActionPlan, id=action_plan_id)
+        if action_plan:
             action_plan.attachment_file = stored
             action_plan.save(update_fields=["attachment_file"])
 
