@@ -53,7 +53,7 @@ const useFetchCompanies = () => {
 
   const fetchUsers = async () => {
     try {
-      const response = await axios.get('/api/users/', {
+      const response = await axios.get('/api/users/list/', {
         headers: {
           Authorization: `Bearer ${token}`,
         },

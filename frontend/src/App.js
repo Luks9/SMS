@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import { AdminRoute, EmpresaRoute } from './components/PrivateRoute';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { ThemeProvider } from './context/ThemeContext';
@@ -218,14 +218,12 @@ const App = () => {
             </ProtectedRoute>
           }
         />
-        {/* Rota padrão - Redirecionamento baseado na autenticação */}
-        <Route
-          path="/"
-          element={<Navigate to="/login" replace />}
-        />
+        {/* Rota raiz: manter Login para permitir processamento do hash do MSAL no redirectUri */}
+        <Route path="/" element={<Login />} />
       </Routes>
     </ThemeProvider>
   );
 };
 
 export default App;
+

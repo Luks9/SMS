@@ -22,6 +22,7 @@ const useFetchCompanyEvaluations = (companyId, is_active) => {
   // Função para buscar as avaliações por empresa
   const fetchEvaluationsByCompany = async (companyId) => {
     try {
+      setError(null);
       // Valida o companyId e is_active antes de fazer a requisição
       if (!isValidCompanyId(companyId)) {
         throw new Error('ID da empresa inválido');
@@ -32,7 +33,8 @@ const useFetchCompanyEvaluations = (companyId, is_active) => {
       }
 
       const token = getToken();
-      const response = await axios.get(`/api/evaluation/evaluations-by-company/${companyId}/?is_active=${is_active}`, {
+      const response = await axios.get(`/api/evaluation/evaluations-by-company/${companyId}/`, {
+        params: { is_active },
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -43,8 +45,10 @@ const useFetchCompanyEvaluations = (companyId, is_active) => {
       } else {
         setEvaluations([]); // Caso não haja avaliações, retorna um array vazio
       }
+      setError(null);
     } catch (error) {
       console.error('Erro ao buscar avaliações:', error);
+      setEvaluations([]);
       setError(error);
     } finally {
       setLoading(false);
@@ -55,6 +59,10 @@ const useFetchCompanyEvaluations = (companyId, is_active) => {
     if (companyId) {
       setLoading(true);
       fetchEvaluationsByCompany(companyId);
+    } else {
+      setEvaluations([]);
+      setError(null);
+      setLoading(false);
     }
   }, [companyId, is_active]); // Adicionando 'is_active' na dependência
 

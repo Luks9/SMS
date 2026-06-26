@@ -3,7 +3,7 @@ import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
 
 const useFetchUsers = () => {
-  const { getToken } = useContext(AuthContext);
+  const { getToken, selectedPoleId } = useContext(AuthContext);
 
   const [users, setUsers] = useState([]);
   const [groups, setGroups] = useState([]);
@@ -101,7 +101,14 @@ const useFetchUsers = () => {
     }
 
     try {
-      const response = await axios.put(`/api/users/users/${userId}/update/`, userData, {
+      const payload = {
+        ...userData,
+      };
+      if (!payload.is_superuser && selectedPoleId) {
+        payload.active_polo_id = Number(selectedPoleId);
+      }
+
+      const response = await axios.put(`/api/users/users/${userId}/update/`, payload, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',

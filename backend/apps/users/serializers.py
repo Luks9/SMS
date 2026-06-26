@@ -30,7 +30,24 @@ class UserSerializer(serializers.ModelSerializer):
 
     def get_companies(self, obj):
         from apps.core.serializers import CompanySerializer
-        return CompanySerializer(obj.companies.all(), many=True).data
+        companies = obj.companies.all().prefetch_related('poles')
+        serialized = CompanySerializer(companies, many=True).data
+
+        company_map = {company.id: company for company in companies}
+        for item in serialized:
+            company = company_map.get(item.get('id'))
+            if not company:
+                item['poles'] = []
+                continue
+            item['poles'] = [
+                {
+                    'id': pole.id,
+                    'name': pole.name,
+                    'description': pole.description,
+                }
+                for pole in company.poles.all().order_by('name')
+            ]
+        return serialized
 
     def get_groups(self, obj):
         return list(obj.groups.values_list('name', flat=True))

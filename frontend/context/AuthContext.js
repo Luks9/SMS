@@ -10,7 +10,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (accessToken) => {
     try {
-      const response = await axios.post('http://localhost:8000/api/login/', null, {
+      const response = await axios.post('http://backend-sms-avalia.bravaenergia.com/api/login/', null, {
         headers: {
           Authorization: `Bearer ${accessToken}`
         }

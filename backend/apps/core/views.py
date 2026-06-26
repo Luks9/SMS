@@ -3,15 +3,16 @@ from rest_framework import viewsets, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse, OpenApiTypes
 import os
 from apps.users.utils.permissions import user_has_access_to_company
 from django.http import FileResponse, Http404, HttpResponse
 from .utils import export_pdf as generate_pdf_report, export_xlsx as generate_xlsx_report
 from django.shortcuts import get_object_or_404
-from django.db.models import Exists, OuterRef, Q
+from django.db.models import Exists, OuterRef, Q, Count, Max
 from django.db.models.deletion import ProtectedError
-from .models import Company, CategoryQuestion, Question, Form, Answer, Subcategory, Evaluation, ActionPlan, Polo
+from .models import Company, CategoryQuestion, Question, Form, Answer, Subcategory, Evaluation, ActionPlan, Polo, StoredFile
 from .serializers import (
     CompanySerializer, 
     CategoryQuestionSerializer, 
@@ -28,11 +29,281 @@ from .serializers import (
 )
 from rest_framework.pagination import PageNumberPagination
 import mimetypes
+from django.conf import settings
+from django.utils import timezone
+from datetime import datetime
+import csv
+from .upload_service import upload_uploaded_file_directly
+from .storage.onedrive.client import OneDriveClient
 
 class StandardResultsSetPagination(PageNumberPagination):
     page_size = 10
     page_size_query_param = 'page_size'
     max_page_size = 100
+
+
+def _safe_month_year(month_raw, year_raw):
+    today = timezone.now().date()
+    month = today.month
+    year = today.year
+    try:
+        parsed_month = int(month_raw) if month_raw is not None else month
+    except (TypeError, ValueError):
+        parsed_month = month
+    try:
+        parsed_year = int(year_raw) if year_raw is not None else year
+    except (TypeError, ValueError):
+        parsed_year = year
+
+    if parsed_month < 1 or parsed_month > 12:
+        parsed_month = month
+    if parsed_year < 2000 or parsed_year > 2100:
+        parsed_year = year
+    return parsed_month, parsed_year
+
+
+def _company_abbreviation(name):
+    if not name:
+        return ""
+    parts = [chunk for chunk in name.strip().split() if chunk]
+    if not parts:
+        return ""
+    if len(parts) == 1:
+        return parts[0][:4].upper()
+    return "".join(part[0].upper() for part in parts[:4])
+
+
+def _resolve_action_dashboard_status(action, today):
+    is_pending = action.status != "COMPLETED"
+    has_evidence = bool(action.attachment or action.attachment_file_id)
+    has_response = bool(action.response_company or action.response_choice or action.response_date)
+
+    if is_pending and action.end_date and action.end_date < today:
+        return "overdue"
+    if is_pending and not has_evidence:
+        return "awaiting_evidence"
+    if is_pending and has_response:
+        return "awaiting_validation"
+    if is_pending:
+        return "pending"
+    return "completed"
+
+
+def _dashboard_data_for_user(user, *, pole_id=None, month=None, year=None, page=1, page_size=20):
+    month, year = _safe_month_year(month, year)
+    today = timezone.now().date()
+
+    company_qs = Company.objects.filter(is_active=True).prefetch_related("poles")
+    if user.is_superuser:
+        if pole_id:
+            company_qs = company_qs.filter(poles__id=pole_id)
+    else:
+        company_qs = company_qs.filter(users=user)
+
+    company_qs = company_qs.distinct().order_by("name")
+    eligible_company_ids = list(company_qs.values_list("id", flat=True))
+    eligible_total = len(eligible_company_ids)
+
+    evaluations_qs = Evaluation.objects.filter(
+        is_active=True,
+        period__month=month,
+        period__year=year,
+        company_id__in=eligible_company_ids,
+    )
+
+    eval_agg = {
+        item["company_id"]: item
+        for item in evaluations_qs.values("company_id").annotate(
+            total=Count("id"),
+            completed=Count("id", filter=Q(status="COMPLETED")),
+            in_progress=Count("id", filter=Q(status__in=["IN_PROGRESS", "PENDING", "EXPIRED"])),
+            latest_created=Max("created_at"),
+            latest_completed=Max("completed_at"),
+        )
+    }
+    score_agg = {
+        item["company_id"]: item["latest_score"]
+        for item in evaluations_qs.values("company_id").annotate(latest_score=Max("score"))
+    }
+    latest_eval_map = {}
+    for item in evaluations_qs.order_by("company_id", "-created_at", "-id").values("id", "company_id"):
+        if item["company_id"] not in latest_eval_map:
+            latest_eval_map[item["company_id"]] = item["id"]
+
+    actions_qs = ActionPlan.objects.filter(
+        evaluation__is_active=True,
+        evaluation__period__month=month,
+        evaluation__period__year=year,
+        company_id__in=eligible_company_ids,
+    ).select_related("company", "responsible", "evaluation")
+
+    action_count_map = {
+        item["company_id"]: item
+        for item in actions_qs.values("company_id").annotate(
+            pending=Count("id", filter=~Q(status="COMPLETED")),
+            overdue=Count("id", filter=~Q(status="COMPLETED") & Q(end_date__lt=today)),
+        )
+    }
+    latest_action_map = {}
+    for action in actions_qs.order_by("company_id", "end_date", "-id").values("id", "company_id"):
+        if action["company_id"] not in latest_action_map:
+            latest_action_map[action["company_id"]] = action["id"]
+
+    companies_full = list(company_qs)
+    company_rows = []
+    not_started_list = []
+    in_progress_list = []
+    completed_list = []
+
+    for company in companies_full:
+        eval_info = eval_agg.get(company.id, {})
+        total_eval = eval_info.get("total", 0)
+        completed_eval = eval_info.get("completed", 0)
+        in_progress_eval = eval_info.get("in_progress", 0)
+
+        if total_eval == 0:
+            status_key = "not_started"
+            status_label = "Nao iniciada"
+            not_started_list.append(company)
+        elif completed_eval == total_eval:
+            status_key = "completed"
+            status_label = "Concluida"
+            completed_list.append(company)
+        else:
+            status_key = "in_progress"
+            status_label = "Em andamento"
+            in_progress_list.append(company)
+
+        actions_info = action_count_map.get(company.id, {})
+        pending_actions = actions_info.get("pending", 0)
+        overdue_actions = actions_info.get("overdue", 0)
+        latest_update = eval_info.get("latest_completed") or eval_info.get("latest_created")
+
+        company_rows.append(
+            {
+                "company_id": company.id,
+                "company_name": company.name,
+                "company_abbr": _company_abbreviation(company.name),
+                "company_cnpj": company.cnpj,
+                "status": status_key,
+                "status_label": status_label,
+                "last_updated_at": latest_update,
+                "score": score_agg.get(company.id),
+                "actions_pending": pending_actions,
+                "actions_overdue": overdue_actions,
+                "total_evaluations": total_eval,
+                "completed_evaluations": completed_eval,
+                "in_progress_evaluations": in_progress_eval,
+                "poles": [{"id": pole.id, "name": pole.name} for pole in company.poles.all()],
+                "latest_evaluation_id": latest_eval_map.get(company.id),
+                "latest_action_plan_id": latest_action_map.get(company.id),
+            }
+        )
+
+    company_rows.sort(
+        key=lambda row: (
+            0 if row["actions_overdue"] > 0 else 1,
+            row["last_updated_at"] or datetime(2999, 12, 31, tzinfo=timezone.get_current_timezone()),
+            row["company_name"].lower(),
+        )
+    )
+
+    start = max((page - 1) * page_size, 0)
+    end = start + page_size
+    paged_companies = company_rows[start:end]
+
+    action_rows = []
+    overdue_actions = []
+    awaiting_validation_actions = []
+    awaiting_evidence_actions = []
+    for action in actions_qs.order_by("end_date", "id"):
+        dashboard_status = _resolve_action_dashboard_status(action, today)
+        item = {
+            "id": action.id,
+            "company_id": action.company_id,
+            "company": action.company.name,
+            "company_abbr": _company_abbreviation(action.company.name),
+            "evaluation_id": action.evaluation_id,
+            "description": action.description,
+            "due_date": action.end_date,
+            "status": dashboard_status,
+            "type": "action_plan",
+            "assigned_to": (
+                action.responsible.get_full_name() or action.responsible.username
+                if action.responsible
+                else None
+            ),
+            "needs_review": dashboard_status == "awaiting_validation",
+        }
+        action_rows.append(item)
+        if dashboard_status == "overdue":
+            overdue_actions.append(item)
+        if dashboard_status == "awaiting_validation":
+            awaiting_validation_actions.append(item)
+        if dashboard_status == "awaiting_evidence":
+            awaiting_evidence_actions.append(item)
+
+    actions_pending_total = len([item for item in action_rows if item["status"] != "completed"])
+    actions_overdue_total = len(overdue_actions)
+
+    inconsistency_rows = []
+    companies_with_user_count = company_qs.annotate(user_count=Count("users", distinct=True))
+    for company in companies_with_user_count:
+        missing = []
+        if company.user_count == 0:
+            missing.append("Sem responsavel")
+        if not company.dominio:
+            missing.append("Sem dominio/e-mail")
+        if missing:
+            inconsistency_rows.append(
+                {
+                    "company_id": company.id,
+                    "company_name": company.name,
+                    "issues": missing,
+                }
+            )
+
+    kpis = {
+        "eligible": eligible_total,
+        "completed": len(completed_list),
+        "pending": len(not_started_list) + len(in_progress_list),
+        "in_progress": len(in_progress_list),
+        "not_started": len(not_started_list),
+        "actions_pending": actions_pending_total,
+        "actions_overdue": actions_overdue_total,
+    }
+
+    checklist = {
+        "evaluations_not_started": [
+            {"company_id": company.id, "company_name": company.name}
+            for company in sorted(not_started_list, key=lambda x: x.name.lower())
+        ],
+        "evaluations_in_progress": [
+            {"company_id": company.id, "company_name": company.name}
+            for company in sorted(in_progress_list, key=lambda x: x.name.lower())
+        ],
+        "actions_overdue": overdue_actions,
+        "actions_waiting_validation": awaiting_validation_actions,
+        "evidences_pending": awaiting_evidence_actions,
+        "data_inconsistencies": sorted(inconsistency_rows, key=lambda x: x["company_name"].lower()),
+    }
+
+    return {
+        "month": month,
+        "year": year,
+        "kpis": kpis,
+        "pagination": {
+            "count": len(company_rows),
+            "page": page,
+            "page_size": page_size,
+            "has_next": end < len(company_rows),
+            "has_previous": page > 1,
+        },
+        "companies": paged_companies,
+        "companies_full": company_rows,
+        "actions": action_rows,
+        "checklist": checklist,
+    }
 
 def get_content_type(file_path):
     """
@@ -496,9 +767,78 @@ class AnswerViewSet(viewsets.ModelViewSet):
     queryset = Answer.objects.all()
     serializer_class = AnswerSerializer
 
+    def _strip_large_files_from_data(self, request):
+        threshold_mb = getattr(settings, "LEGACY_MULTIPART_THRESHOLD_MB", 15)
+        threshold = threshold_mb * 1024 * 1024
+        data = request.data.copy()
+        for field_name in ("attachment_respondent", "attachment_evaluator"):
+            incoming_file = request.FILES.get(field_name)
+            if incoming_file and incoming_file.size >= threshold:
+                data.pop(field_name, None)
+        return data
+
+    def _handle_large_legacy_file(self, *, instance, request):
+        threshold_mb = getattr(settings, "LEGACY_MULTIPART_THRESHOLD_MB", 15)
+        threshold = threshold_mb * 1024 * 1024
+        files_to_upload = []
+
+        respondent = request.FILES.get("attachment_respondent")
+        evaluator = request.FILES.get("attachment_evaluator")
+        if respondent and respondent.size >= threshold:
+            files_to_upload.append(("attachment_respondent_file", respondent, StoredFile.FieldSlot.ANSWER_RESPONDENT))
+        if evaluator and evaluator.size >= threshold:
+            files_to_upload.append(("attachment_evaluator_file", evaluator, StoredFile.FieldSlot.ANSWER_EVALUATOR))
+
+        for target_field, uploaded_file, slot in files_to_upload:
+            stored = upload_uploaded_file_directly(
+                user=request.user,
+                uploaded_file=uploaded_file,
+                relative_path=f"answers/{instance.id}",
+                company=instance.company,
+                field_slot=slot,
+            )
+            setattr(instance, target_field, stored)
+
+        if files_to_upload:
+            update_fields = [field for field, _f, _slot in files_to_upload]
+            instance.save(update_fields=update_fields)
+
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        self._handle_large_legacy_file(instance=instance, request=self.request)
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        self._handle_large_legacy_file(instance=instance, request=self.request)
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=self._strip_large_files_from_data(request))
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=self._strip_large_files_from_data(request), partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        if getattr(instance, '_prefetched_objects_cache', None):
+            instance._prefetched_objects_cache = {}
+        return Response(serializer.data)
+
 
 def download_attachment_respondent(request, answer_id):
     answer = get_object_or_404(Answer, pk=answer_id)
+    if answer.attachment_respondent_file_id:
+        if answer.attachment_respondent_file.provider == StoredFile.Provider.LOCAL:
+            download_url = f"/api/files/{answer.attachment_respondent_file_id}/download/?mode=proxy"
+        else:
+            client = OneDriveClient()
+            download_url, _meta = client.get_download_url(answer.attachment_respondent_file.provider_item_id)
+        return HttpResponse(status=302, headers={"Location": download_url})
+
     file_path = answer.attachment_respondent.path  # Caminho absoluto no sistema de arquivos
     
     if not os.path.exists(file_path):
@@ -524,6 +864,14 @@ class ActionPlanViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'], url_path='download_attachment_plan_action')
     def download_attachment_plan_action(self, request, pk=None):
         plan_action = get_object_or_404(ActionPlan, pk=pk)
+
+        if plan_action.attachment_file_id:
+            if plan_action.attachment_file.provider == StoredFile.Provider.LOCAL:
+                download_url = f"/api/files/{plan_action.attachment_file_id}/download/?mode=proxy"
+            else:
+                client = OneDriveClient()
+                download_url, _meta = client.get_download_url(plan_action.attachment_file.provider_item_id)
+            return HttpResponse(status=302, headers={"Location": download_url})
 
         # Verifica se o anexo existe
         if not plan_action.attachment or not os.path.exists(plan_action.attachment.path):
@@ -606,3 +954,181 @@ class PoloViewSet(viewsets.ModelViewSet):
         polos = Polo.objects.filter(is_active=True)
         serializer = self.get_serializer(polos, many=True)
         return Response(serializer.data)
+
+
+class MonthlyDashboardView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        month = request.query_params.get("month")
+        year = request.query_params.get("year")
+        pole_id = request.headers.get("X-Polo-Id")
+        try:
+            page = int(request.query_params.get("page", 1))
+        except (TypeError, ValueError):
+            page = 1
+        try:
+            page_size = int(request.query_params.get("page_size", 20))
+        except (TypeError, ValueError):
+            page_size = 20
+        page = 1 if page < 1 else page
+        page_size = 20 if page_size < 1 else min(page_size, 100)
+
+        payload = _dashboard_data_for_user(
+            request.user,
+            pole_id=pole_id,
+            month=month,
+            year=year,
+            page=page,
+            page_size=page_size,
+        )
+        return Response(payload, status=status.HTTP_200_OK)
+
+
+class MonthlyDashboardExportView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        month = request.query_params.get("month")
+        year = request.query_params.get("year")
+        pole_id = request.headers.get("X-Polo-Id")
+        payload = _dashboard_data_for_user(
+            request.user,
+            pole_id=pole_id,
+            month=month,
+            year=year,
+            page=1,
+            page_size=100000,
+        )
+
+        response = HttpResponse(content_type="text/csv; charset=utf-8")
+        response["Content-Disposition"] = f'attachment; filename="dashboard_mensal_{payload["year"]}_{payload["month"]:02d}.csv"'
+        writer = csv.writer(response)
+        writer.writerow(
+            [
+                "Empresa",
+                "Abreviacao",
+                "Status Avaliacao",
+                "Ultima Atualizacao",
+                "Pontuacao",
+                "Acoes Pendentes",
+                "Acoes Vencidas",
+                "Polos",
+            ]
+        )
+        for item in payload["companies_full"]:
+            writer.writerow(
+                [
+                    item["company_name"],
+                    item["company_abbr"],
+                    item["status_label"],
+                    item["last_updated_at"].strftime("%Y-%m-%d %H:%M:%S") if item["last_updated_at"] else "",
+                    item["score"] if item["score"] is not None else "",
+                    item["actions_pending"],
+                    item["actions_overdue"],
+                    ", ".join(polo["name"] for polo in item["poles"]),
+                ]
+            )
+        return response
+
+
+class CompanyMonthlyDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, company_id):
+        month = request.query_params.get("month")
+        year = request.query_params.get("year")
+        month, year = _safe_month_year(month, year)
+
+        company = get_object_or_404(Company.objects.prefetch_related("users", "poles"), id=company_id, is_active=True)
+        access_check = user_has_access_to_company(request.user, company)
+        if access_check is not True:
+            return access_check
+
+        evaluations = Evaluation.objects.filter(
+            company_id=company.id,
+            is_active=True,
+            period__month=month,
+            period__year=year,
+        ).select_related("evaluator", "form").order_by("-created_at")
+
+        actions = ActionPlan.objects.filter(
+            company_id=company.id,
+            evaluation__is_active=True,
+            evaluation__period__month=month,
+            evaluation__period__year=year,
+        ).select_related("responsible", "evaluation").order_by("end_date", "id")
+
+        today = timezone.now().date()
+        action_rows = []
+        for action in actions:
+            action_rows.append(
+                {
+                    "id": action.id,
+                    "description": action.description,
+                    "status": _resolve_action_dashboard_status(action, today),
+                    "raw_status": action.status,
+                    "due_date": action.end_date,
+                    "responsible": (
+                        action.responsible.get_full_name() or action.responsible.username
+                        if action.responsible
+                        else None
+                    ),
+                    "has_evidence": bool(action.attachment or action.attachment_file_id),
+                    "response_date": action.response_date,
+                    "evaluation_id": action.evaluation_id,
+                }
+            )
+
+        pending_questions = []
+        for evaluation in evaluations:
+            total = evaluation.total_questions_count
+            answered = evaluation.respondent_answers_count
+            if answered < total:
+                pending_questions.append(
+                    {
+                        "evaluation_id": evaluation.id,
+                        "form_name": evaluation.form.name,
+                        "answered_questions": answered,
+                        "total_questions": total,
+                        "pending_questions": max(total - answered, 0),
+                    }
+                )
+
+        payload = {
+            "company": {
+                "id": company.id,
+                "name": company.name,
+                "abbreviation": _company_abbreviation(company.name),
+                "poles": [{"id": pole.id, "name": pole.name} for pole in company.poles.all()],
+            },
+            "month": month,
+            "year": year,
+            "summary": {
+                "total_evaluations": evaluations.count(),
+                "completed": evaluations.filter(status="COMPLETED").count(),
+                "in_progress": evaluations.exclude(status="COMPLETED").count(),
+                "responsibles": sorted(
+                    {
+                        (evaluation.evaluator.get_full_name() or evaluation.evaluator.username)
+                        for evaluation in evaluations
+                    }
+                ),
+            },
+            "evaluations": [
+                {
+                    "id": evaluation.id,
+                    "status": evaluation.status,
+                    "created_at": evaluation.created_at,
+                    "completed_at": evaluation.completed_at,
+                    "valid_until": evaluation.valid_until,
+                    "score": evaluation.score,
+                    "form_name": evaluation.form.name,
+                    "evaluator": evaluation.evaluator.get_full_name() or evaluation.evaluator.username,
+                }
+                for evaluation in evaluations
+            ],
+            "pending_items": pending_questions,
+            "actions": action_rows,
+        }
+        return Response(payload, status=status.HTTP_200_OK)

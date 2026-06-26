@@ -1,5 +1,3 @@
-// src/components/tables/Pagination.jsx
-
 const Pagination = ({ totalItems, itemsPerPage, currentPage, onPageChange, disabled }) => {
   const totalPages = Math.ceil(totalItems / itemsPerPage);
 
@@ -26,13 +24,15 @@ const Pagination = ({ totalItems, itemsPerPage, currentPage, onPageChange, disab
     for (let i = 1; i <= totalPages; i++) {
       pages.push(
         <li key={i}>
-          <a
+          <button
+            type="button"
             className={`pagination-link ${i === currentPage ? 'is-current' : ''}`}
             onClick={() => handlePageClick(i)}
+            disabled={disabled}
             style={{ cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.6 : 1 }}
           >
             {i}
-          </a>
+          </button>
         </li>
       );
     }
@@ -41,22 +41,24 @@ const Pagination = ({ totalItems, itemsPerPage, currentPage, onPageChange, disab
 
   return (
     <nav className="pagination is-centered" role="navigation" aria-label="pagination">
-      <a
+      <button
+        type="button"
         className="pagination-previous"
         onClick={handlePreviousPage}
         disabled={currentPage === 1 || disabled}
-        style={{ cursor: (currentPage === 1 || disabled) ? 'not-allowed' : 'pointer', opacity: (currentPage === 1 || disabled) ? 0.6 : 1 }}
+        style={{ cursor: currentPage === 1 || disabled ? 'not-allowed' : 'pointer', opacity: currentPage === 1 || disabled ? 0.6 : 1 }}
       >
         Anterior
-      </a>
-      <a
+      </button>
+      <button
+        type="button"
         className="pagination-next"
         onClick={handleNextPage}
         disabled={currentPage === totalPages || disabled}
-        style={{ cursor: (currentPage === totalPages || disabled) ? 'not-allowed' : 'pointer', opacity: (currentPage === totalPages || disabled) ? 0.6 : 1 }}
+        style={{ cursor: currentPage === totalPages || disabled ? 'not-allowed' : 'pointer', opacity: currentPage === totalPages || disabled ? 0.6 : 1 }}
       >
-        Próxima
-      </a>
+        Proxima
+      </button>
       <ul className="pagination-list">
         {renderPageNumbers()}
       </ul>
