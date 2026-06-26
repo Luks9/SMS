@@ -144,11 +144,10 @@ if CSP_ENABLED:
 
     from config.csp_config import get_csp_config
 
-    if CSP_REPORT_ONLY:
-        CONTENT_SECURITY_POLICY_REPORT_ONLY = get_csp_config()
-
     if CSP_ENFORCE:
         CONTENT_SECURITY_POLICY = get_csp_config()
+    elif CSP_REPORT_ONLY:
+        CONTENT_SECURITY_POLICY_REPORT_ONLY = get_csp_config()
 
 ROOT_URLCONF = 'config.urls'
 
