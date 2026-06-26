@@ -11,8 +11,12 @@ from .views import (
     EvaluationViewSet,
     ActionPlanViewSet,
     download_attachment_respondent,
-    PoloViewSet
+    PoloViewSet,
+    MonthlyDashboardView,
+    MonthlyDashboardExportView,
+    CompanyMonthlyDetailView,
 )
+from .upload_views import UploadInitView, UploadChunkView, UploadCompleteView, FileDownloadView
 
 # Criação do router para as views automáticas do DRF
 router = DefaultRouter()
@@ -30,5 +34,12 @@ router.register(r"poles", PoloViewSet)
 # Combinação de URLs do router com a nova rota customizada
 urlpatterns = [
     path('', include(router.urls)),  # Inclui todas as rotas geradas pelo router
+    path('dashboard/monthly/', MonthlyDashboardView.as_view(), name='dashboard-monthly'),
+    path('dashboard/monthly/export/', MonthlyDashboardExportView.as_view(), name='dashboard-monthly-export'),
+    path('companies/<int:company_id>/monthly-detail/', CompanyMonthlyDetailView.as_view(), name='company-monthly-detail'),
     path('download/attachment_respondent/<int:answer_id>/', download_attachment_respondent, name='download_attachment_respondent'),
+    path('uploads/init/', UploadInitView.as_view(), name='upload-init'),
+    path('uploads/<uuid:upload_id>/chunk/', UploadChunkView.as_view(), name='upload-chunk'),
+    path('uploads/<uuid:upload_id>/complete/', UploadCompleteView.as_view(), name='upload-complete'),
+    path('files/<uuid:file_id>/download/', FileDownloadView.as_view(), name='file-download'),
 ]

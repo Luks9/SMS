@@ -4,17 +4,36 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def clean_username(username):
+def clean_username(username, fallback_email=None):
     """
-    Limpa o username removendo tudo antes do # se existir
+    Limpa o username removendo tudo antes do # se existir.
+    Quando vier sem dominio (ex: 'eneil.silva'), tenta fallback por email.
     """
     if not username:
-        return None
+        username = ""
     
     if '#' in username:
         username = username.split('#')[-1]
-    
-    return username if '@' in username else None
+
+    normalized = (username or "").strip().lower()
+    if '@' in normalized:
+        return normalized
+
+    fallback = (fallback_email or "").strip().lower()
+    if '@' in fallback:
+        return fallback
+
+    if not normalized:
+        return None
+
+    # Ultimo fallback: se existir exatamente um usuario com esse local-part.
+    matches = list(
+        User.objects.filter(username__istartswith=f"{normalized}@").values_list("username", flat=True)[:2]
+    )
+    if len(matches) == 1:
+        return matches[0].lower()
+
+    return None
 
 def associate_user_with_company_by_domain(user):
     """
@@ -25,7 +44,7 @@ def associate_user_with_company_by_domain(user):
         logger.error(f"Usuário sem username: ID {user.id}")
         return None
     
-    cleaned_username = clean_username(user.username)
+    cleaned_username = clean_username(user.username, fallback_email=getattr(user, "email", None))
     if not cleaned_username:
         logger.error(f"Username inválido: {user.username}")
         return None
@@ -39,10 +58,11 @@ def associate_user_with_company_by_domain(user):
         
         # Usuários administrativos especiais - SUPERUSERS
         if domain == "bravaenergia.com":
+            user.is_staff = True
             user.is_superuser = True
             user.companies.clear()
             user.groups.clear()
-            user.save(update_fields=['is_superuser'])
+            user.save(update_fields=['is_superuser', 'is_staff'])
             logger.info(f"Usuário {cleaned_username} configurado como superuser")
             return user
 
@@ -51,7 +71,7 @@ def associate_user_with_company_by_domain(user):
 
         if company:
             user.is_superuser = False
-            user.is_staff = False
+            #user.is_staff = False
             
             # Associa ao grupo empresa se necessário
             try:
@@ -64,9 +84,9 @@ def associate_user_with_company_by_domain(user):
                 logger.error("Grupo 'empresa' (ID 1) não encontrado")
                 return None
             
-            # Associa à empresa se necessário
+            # Associa à empresa sem sobrescrever vínculos já existentes.
+            # Um login pode estar vinculado a múltiplas empresas/contextos.
             if not user.companies.filter(id=company.id).exists():
-                user.companies.clear()
                 user.companies.add(company)
                 logger.info(f"Usuário {cleaned_username} associado à empresa {company.name}")
             

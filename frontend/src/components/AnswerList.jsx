@@ -125,51 +125,48 @@ const AnswerList = ({ questions, fetchEvaluationDetails }) => {
       
     } catch (error) {
       console.error('Erro ao salvar a resposta:', error);
-      setMessage('Erro ao salvar a resposta. Por favor, tente novamente.');
+      const apiDetail = error?.response?.data?.detail || error?.response?.data?.non_field_errors?.[0];
+      setMessage(apiDetail || 'Erro ao salvar a resposta. Por favor, tente novamente.');
       setMessageType('danger');
     } finally {
       setIsSubmitting(prev => ({ ...prev, [questionId]: false })); // Finaliza carregamento
     }
   };
 
-  const handleDownload = async (answerId, fileName) => {
-  try {
-    const token = getToken();
-    const response = await axios.get(`/api/download/attachment_respondent/${answerId}/`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      responseType: 'blob',
-    });
+  const handleDownload = async (answer) => {
+    if (answer?.attachment_respondent_file_id) {
+      const token = getToken();
+      const downloadResponse = await axios.get(`/api/files/${answer.attachment_respondent_file_id}/download/?mode=json`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      window.open(downloadResponse.data.url, '_blank', 'noopener,noreferrer');
+      return;
+    }
 
-    // Cria URL temporária
-    const blob = new Blob([response.data]);
-    const url = window.URL.createObjectURL(blob);
+    try {
+      const token = getToken();
+      const fileName = answer?.attachment_respondent?.split('/').pop() || answer?.attachment_respondent_name || 'anexo';
+      const response = await axios.get(`/api/download/attachment_respondent/${answer.id}/`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        responseType: 'blob',
+      });
 
-    // Verifica se o arquivo é PDF
-    const isPDF =
-      fileName.toLowerCase().endsWith('.pdf') ||
-      response.headers['content-type']?.includes('pdf');
-
-    if (isPDF) {
-      // Abre o PDF em nova aba
-      window.open(url, '_blank');
-    } else {
-      // Faz download normalmente
+      const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
       link.setAttribute('download', fileName);
       document.body.appendChild(link);
       link.click();
+      window.URL.revokeObjectURL(url);
       link.remove();
+    } catch (error) {
+      console.error('Erro ao baixar o arquivo:', error);
     }
-
-    // Libera o objeto da memória após um tempo
-    setTimeout(() => window.URL.revokeObjectURL(url), 1000);
-  } catch (error) {
-    console.error('Erro ao baixar o arquivo:', error);
-  }
-};
+  };
 
 
 
@@ -215,9 +212,9 @@ const AnswerList = ({ questions, fetchEvaluationDetails }) => {
                         {ANSWER_CHOICES_MAP[answer.answer_respondent]?.label || 'Aguardando resposta'}
                       </span>
                     </p>
-                    {answer.attachment_respondent ? (
+                    {answer.attachment_respondent || answer.attachment_respondent_file_id ? (
                     <button
-                        onClick={() => handleDownload(answer.id, answer.attachment_respondent.split('/').pop())}
+                        onClick={() => handleDownload(answer)}
                     >
                         <FontAwesomeIcon icon={faFileDownload} /> Baixar Anexo
                     </button>

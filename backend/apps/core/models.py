@@ -224,10 +224,24 @@ class Evaluation(models.Model):
 class Answer(models.Model):
     answer_respondent = models.CharField(max_length=2, choices=ANSWER_CHOICES)
     attachment_respondent = models.FileField(upload_to=rename_attachment_respondent, blank=True, null=True)
+    attachment_respondent_file = models.ForeignKey(
+        'StoredFile',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='answer_respondent_links',
+    )
     date_respondent = models.DateField(blank=True, null=True)
     
     answer_evaluator = models.CharField(max_length=2, choices=ANSWER_CHOICES, blank=True, null=True)
     attachment_evaluator = models.FileField(upload_to=rename_attachment_evaluator, blank=True, null=True)
+    attachment_evaluator_file = models.ForeignKey(
+        'StoredFile',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='answer_evaluator_links',
+    )
     date_evaluator = models.DateField(null=True, blank=True)
     note = models.TextField(null=True, blank=True)
 
@@ -272,9 +286,109 @@ class ActionPlan(models.Model):
     responsible = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     status = models.CharField(max_length=20, choices=RESPONSE_STATUS, default='PENDING')
     attachment = models.FileField(upload_to=rename_attachment_action_plan, blank=True, null=True)
+    attachment_file = models.ForeignKey(
+        'StoredFile',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='action_plan_links',
+    )
 
     def __str__(self):
         return f"Action Plan for {self.company.name} - Evaluation {self.evaluation.id}"
+
+
+class UploadSession(models.Model):
+    class StorageProvider(models.TextChoices):
+        ONEDRIVE = "onedrive", "OneDrive"
+        LOCAL = "local", "Local"
+
+    class Status(models.TextChoices):
+        INITIATED = "initiated", "Iniciado"
+        IN_PROGRESS = "in_progress", "Em Progresso"
+        COMPLETED = "completed", "Concluido"
+        FAILED = "failed", "Falhou"
+        CANCELED = "canceled", "Cancelado"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='upload_sessions')
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.INITIATED)
+    storage_provider = models.CharField(max_length=20, choices=StorageProvider.choices, default=StorageProvider.ONEDRIVE)
+
+    file_name = models.CharField(max_length=512)
+    original_file_name = models.CharField(max_length=512, blank=True)
+    file_size = models.BigIntegerField()
+    content_type = models.CharField(max_length=255, blank=True)
+    chunk_size = models.IntegerField(default=5 * 1024 * 1024)
+    bytes_sent = models.BigIntegerField(default=0)
+
+    upload_url = models.TextField()
+    drive_id = models.CharField(max_length=255)
+    parent_path = models.CharField(max_length=1024, blank=True)
+    onedrive_item_id = models.CharField(max_length=255, blank=True)
+
+    expected_sha256 = models.CharField(max_length=64, blank=True)
+    sha256 = models.CharField(max_length=64, blank=True)
+    md5 = models.CharField(max_length=32, blank=True)
+
+    retry_count = models.IntegerField(default=0)
+    last_error = models.TextField(blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+
+
+class StoredFile(models.Model):
+    class Provider(models.TextChoices):
+        ONEDRIVE = "onedrive", "OneDrive"
+        LOCAL = "local", "Local"
+
+    class FieldSlot(models.TextChoices):
+        ANSWER_RESPONDENT = "answer_respondent", "Resposta Empresa"
+        ANSWER_EVALUATOR = "answer_evaluator", "Resposta Avaliador"
+        ACTION_PLAN = "action_plan", "Plano de Acao"
+        OTHER = "other", "Outro"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    upload_session = models.ForeignKey(
+        UploadSession,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='stored_files',
+    )
+    uploaded_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name='stored_files')
+    company = models.ForeignKey(Company, on_delete=models.SET_NULL, null=True, blank=True, related_name='stored_files')
+
+    provider = models.CharField(max_length=40, choices=Provider.choices, default=Provider.ONEDRIVE)
+    field_slot = models.CharField(max_length=40, choices=FieldSlot.choices, default=FieldSlot.OTHER)
+    provider_item_id = models.CharField(max_length=255)
+    drive_id = models.CharField(max_length=255)
+
+    file_name = models.CharField(max_length=512)
+    original_file_name = models.CharField(max_length=512)
+    content_type = models.CharField(max_length=255, blank=True)
+    file_size = models.BigIntegerField()
+    sha256 = models.CharField(max_length=64, blank=True)
+    md5 = models.CharField(max_length=32, blank=True)
+
+    download_url_cache = models.TextField(blank=True)
+    download_url_expires_at = models.DateTimeField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+
+    def __str__(self):
+        return self.original_file_name
 
 class Polo(models.Model):
     name = models.CharField("Nome do Polo", max_length=255, unique=True)

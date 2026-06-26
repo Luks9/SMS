@@ -9,7 +9,9 @@ from .models import (
     Subcategory, 
     CategoryQuestion,
     Company,
-    Polo
+    Polo,
+    UploadSession,
+    StoredFile,
 )
 
 admin.site.site_header = "SMS Administração"
@@ -104,6 +106,21 @@ class PoloAdmin(admin.ModelAdmin):
     list_filter = ("is_active",)
     search_fields = ("name", "description")
     filter_horizontal = ("companies", "users")
+
+
+@admin.register(UploadSession)
+class UploadSessionAdmin(admin.ModelAdmin):
+    list_display = ("id", "user", "status", "file_name", "file_size", "bytes_sent", "created_at")
+    list_filter = ("status", "created_at")
+    search_fields = ("file_name", "original_file_name", "user__username")
+    readonly_fields = ("created_at", "updated_at", "completed_at")
+
+
+@admin.register(StoredFile)
+class StoredFileAdmin(admin.ModelAdmin):
+    list_display = ("id", "original_file_name", "provider", "field_slot", "uploaded_by", "file_size", "created_at")
+    list_filter = ("provider", "field_slot", "is_active")
+    search_fields = ("original_file_name", "file_name", "provider_item_id")
 
 
 # Re-register UserAdmin para incluir a nova configuração
