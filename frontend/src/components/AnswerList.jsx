@@ -6,7 +6,7 @@ import { faFileDownload, faEdit, faTimes, faSpinner } from '@fortawesome/free-so
 import { AuthContext } from '../context/AuthContext';
 import Message from './Message';
 
-const AnswerList = ({ questions, fetchEvaluationDetails }) => {
+const AnswerList = ({ questions, fetchEvaluationDetails, evaluationId }) => {
   const { getToken } = useContext(AuthContext);
   const [selectedAnswers, setSelectedAnswers] = useState({});
   const [notes, setNotes] = useState({});
@@ -102,11 +102,23 @@ const AnswerList = ({ questions, fetchEvaluationDetails }) => {
         date_evaluator: moment().format('YYYY-MM-DD'),
         note: note,
       };
-      await axios.patch(`/api/answers/${answerId}/`, requestData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      if (answerId) {
+        await axios.patch(`/api/answers/${answerId}/`, requestData, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+      } else {
+        await axios.post(`/api/answers/`, {
+          ...requestData,
+          question: questionId,
+          evaluation: evaluationId,
+        }, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+      }
 
       setMessage('Resposta enviada com sucesso!');
       setMessageType('success');
@@ -288,7 +300,7 @@ const AnswerList = ({ questions, fetchEvaluationDetails }) => {
                             ></textarea>
                           </div>
                         </div>
-                        {answer.id && (
+                        {(answer.id || (question.id && evaluationId)) && (
                           <button
                             className="button is-primary mt-2"
                             onClick={() => handleSave(question.id, answer.id)}

@@ -240,6 +240,7 @@ class AnswerSerializer(serializers.ModelSerializer):
         validators = []
         extra_kwargs = {
             'company': {'required': False},
+            'answer_respondent': {'required': False, 'allow_blank': True, 'default': ''},
         }
     
     def validate(self, data):

@@ -162,6 +162,36 @@ class AnswerApiIdempotencyTests(APITestCase):
             self.assertEqual(response.status_code, status.HTTP_201_CREATED)
             self.assertEqual(response.data["company"], evaluation.company_id)
 
+    def test_create_answer_evaluator_only_without_respondent_answer(self):
+        payload = {
+            "answer_evaluator": "C",
+            "date_evaluator": timezone.now().date().isoformat(),
+            "note": "Avaliado sem resposta da empresa ainda",
+            "question": self.question.id,
+            "evaluation": self.evaluation.id,
+        }
+
+        response = self.client.post("/api/answers/", payload, format="multipart")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        answer = Answer.objects.get(evaluation=self.evaluation, question=self.question)
+        self.assertEqual(answer.answer_evaluator, "C")
+        self.assertEqual(answer.answer_respondent, "")
+        self.assertEqual(answer.company_id, self.company.id)
+
+    def test_evaluator_only_answer_still_blocked_after_deadline(self):
+        self.evaluation.valid_until = timezone.now().date() - timedelta(days=1)
+        self.evaluation.save()
+
+        payload = {
+            "answer_evaluator": "C",
+            "date_evaluator": timezone.now().date().isoformat(),
+            "question": self.question.id,
+            "evaluation": self.evaluation.id,
+        }
+        response = self.client.post("/api/answers/", payload, format="multipart")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
     def test_patch_answer_with_multipart_file_does_not_crash(self):
         answer = Answer.objects.create(
             question=self.question,

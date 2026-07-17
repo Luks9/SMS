@@ -76,7 +76,7 @@ const EvaluationDetails = () => {
             <p className="card-header-title">Perguntas e Respostas</p>
         </header>
         <div className="card-content">
-            <AnswerList questions={evaluation.questions} fetchEvaluationDetails={fetchEvaluationDetails} />
+            <AnswerList questions={evaluation.questions} fetchEvaluationDetails={fetchEvaluationDetails} evaluationId={evaluation.id} />
         </div>
     </div>
     </Layout>
