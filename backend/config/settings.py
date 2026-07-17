@@ -74,6 +74,12 @@ CSRF_COOKIE_SECURE = config('CSRF_COOKIE_SECURE', default=False, cast=bool)
 SECURE_HSTS_INCLUDE_SUBDOMAINS = config('SECURE_HSTS_INCLUDE_SUBDOMAINS', default=False, cast=bool)
 SECURE_HSTS_PRELOAD = config('SECURE_HSTS_PRELOAD', default=False, cast=bool)
 
+# Content Security Policy rollout flags. CSP stays disabled by default so the
+# first deploy cannot block production assets unexpectedly.
+CSP_ENABLED = config('CSP_ENABLED', default=False, cast=bool)
+CSP_REPORT_ONLY = config('CSP_REPORT_ONLY', default=True, cast=bool)
+CSP_ENFORCE = config('CSP_ENFORCE', default=False, cast=bool)
+
 # Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -93,6 +99,9 @@ INSTALLED_APPS = [
 
 if ENVIRONMENT == 'development':
     INSTALLED_APPS.append('sslserver')
+
+if CSP_ENABLED:
+    INSTALLED_APPS.append('csp')
 
 
 AUTHENTICATION_BACKENDS = (
@@ -129,6 +138,16 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+if CSP_ENABLED:
+    MIDDLEWARE.insert(1, 'csp.middleware.CSPMiddleware')
+
+    from config.csp_config import get_csp_config
+
+    if CSP_ENFORCE:
+        CONTENT_SECURITY_POLICY = get_csp_config()
+    elif CSP_REPORT_ONLY:
+        CONTENT_SECURITY_POLICY_REPORT_ONLY = get_csp_config()
 
 ROOT_URLCONF = 'config.urls'
 
